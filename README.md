@@ -19,5 +19,5 @@ regview [-h] [--insecure] [--no-trunc] [-u USERNAME] [-p PASSWORD] REGISTRY|IMAG
 
 ## Requirements
 
-- Python 3
+- Python 3.6+
 - requests
