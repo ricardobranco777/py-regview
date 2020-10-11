@@ -1,0 +1,259 @@
+#!/usr/bin/python3
+"""
+regview
+"""
+
+import argparse
+import base64
+import json
+import logging
+import os
+import re
+import sys
+
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from getpass import getpass
+from shutil import get_terminal_size
+
+import requests
+from requests.exceptions import RequestException
+
+
+__version__ = "0.1.0a"
+
+
+class DockerRegistry:
+    """
+    Class to implement Docker Registry methods
+    """
+    _supports_schema_v1 = None
+
+    def __init__(self, registry, auth=None, headers=None, verify=True):
+        self.session = requests.Session()
+        if auth is None:
+            auth = tuple(base64.b64decode(self._get_creds(registry)).decode('utf-8').split(':', 1))
+        elif auth[1] is None:
+            auth = (auth[0], getpass("Password: "))
+        self.session.auth = auth
+        if headers is not None:
+            self.session.headers.update(headers)
+        self.session.verify = verify
+        # Check if registry starts with a scheme and adjust accordingly
+        schemes = ("http://", "https://")
+        if registry.startswith(schemes):
+            try:
+                req = self.session.get(f"{registry}/v2/")
+            except RequestException as err:
+                sys.exit("%s" % err)
+            self.registry = registry
+        else:
+            for scheme in schemes:
+                try_url = f"{scheme}{registry}"
+                try:
+                    req = self.session.get(f"{try_url}/v2")
+                    self.registry = try_url
+                    break
+                except RequestException:
+                    pass
+        if not hasattr(self, "registry") or \
+                req.headers.get('docker-distribution-api-version') != 'registry/2.0':
+            sys.exit(f"Invalid registry: {registry}")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.session.close()
+
+    @staticmethod
+    def _get_creds(registry):
+        """
+        Gets the credentials from ~/.docker/config.json
+        """
+        if os.getenv("DOCKER_CONFIG"):
+            config_file = os.path.join(os.getenv("DOCKER_CONFIG"), "config.json")
+        else:
+            config_file = os.path.expanduser(os.path.join("~", ".docker", "config.json"))
+        if not os.path.exists(config_file):
+            return None
+        with open(os.path.expanduser(config_file), "r") as file:
+            config = json.load(file)
+        try:
+            return config['auths'][registry.replace("http://", "")]['auth']
+        except KeyError:
+            pass
+        return None
+
+    def _get_paginated(self, req, string):
+        """
+        Get paginated results
+        """
+        items = req.json()[string]
+        while 'Link' in req.headers:
+            url = self.registry + req.headers['Link'][1:len('>; rel="next"')]
+            req = self.session.get(url)
+            items.extend(req.json()[string])
+        return items
+
+    def get_repos(self):
+        """
+        Get repositories and return a dict of dicts with the repos as keys
+        """
+        req = self.session.get(f"{self.registry}/v2/_catalog")
+        repos = self._get_paginated(req, "repositories")
+        return repos
+
+    def get_tags(self, repo):
+        """
+        Get tags for specified repo
+        """
+        req = self.session.get(f"{self.registry}/v2/{repo}/tags/list")
+        if req.status_code != 200:
+            error = req.json()['errors'][0]['code']
+            print("ERROR: %s: %s" % (repo, error), file=sys.stderr)
+            return repo, []
+        tags = self._get_paginated(req, "tags")
+        return repo, tags
+
+    def get_manifest(self, repo, tag, version=2):
+        """
+        Get the manifest
+        """
+        if version == 1 and self._supports_schema_v1 is False:
+            return None
+        url = f"{self.registry}/v2/{repo}/manifests/{tag}"
+        content_type = f"application/vnd.docker.distribution.manifest.v{version}+json"
+        req = self.session.get(url, headers={"Accept": content_type})
+        if req.status_code != 200:
+            print(f"ERROR: {repo} ${tag} {req.reason}", file=sys.stderr)
+            return None
+        manifest = req.json()
+        if version == 1 and self._supports_schema_v1 is None:
+            self._supports_schema_v1 = manifest['schemaVersion'] == 1
+        elif version == 2:
+            manifest['docker-content-digest'] = req.headers['docker-content-digest']
+        return manifest
+
+    def get_images(self, repos):
+        """
+        Get images"
+        """
+        with ThreadPoolExecutor() as executor:
+            yield from executor.map(self.get_tags, repos)
+
+
+def get_info(manifest):
+    """
+    Get info from manifest schemaVersion 1
+    """
+    if manifest is None:
+        return None
+    data = json.loads(manifest['history'][0]['v1Compatibility'])
+    keys = ('architecture', 'created', 'docker_version', 'os')
+    info = {key: data[key] for key in keys}
+    keys = (
+        'Cmd', 'Entrypoint', 'Env', 'ExposedPorts',
+        'Healthcheck', 'Labels', 'OnBuild', 'Shell',
+        'StopSignal', 'User', 'Volumes', 'WorkingDir'
+    )
+    info.update({key: data['config'].get(key, "") for key in keys})
+    info['created'] = pretty_date(info['created'])
+    return info
+
+
+def pretty_size(size):
+    """
+    Converts a size in bytes to a string in KB, MB, GB or TB
+    """
+    units = (' ', 'K', 'M', 'G', 'T')
+    for i in range(4, -1, -1):
+        if size > 1024**i:
+            return "%.2f%cB" % (float(size) / 1024**i, units[i])
+    return None
+
+
+def pretty_date(string):
+    """
+    Converts date/time string in ISO-8601 format to date(1)
+    """
+    utc_date = datetime.fromisoformat(re.sub(r"\.\d+Z$", "+00:00", string))
+    return utc_date.astimezone().strftime("%a %b %d %H:%M:%S %Z %Y")
+
+
+def print_info(reg, image):
+    """
+    Print info about image
+    """
+    try:
+        repo, tag = image.rsplit(':', 1)
+    except ValueError:
+        repo, tag = image, "latest"
+    manifest = reg.get_manifest(repo, tag)
+    info = get_info(reg.get_manifest(repo, tag, version=1))
+    info['ID'] = manifest['docker-content-digest']
+    info['Digest'] = manifest['config']['digest']
+    info['CompressedSize'] = pretty_size(sum([_['size'] for _ in manifest['layers']]))
+    for key, value in info.items():
+        if not value:
+            continue
+        print("%-20s\t%s" % (key, value))
+
+
+def parse_opts():
+    """
+    Parse options and arguments
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--insecure', action='store_true',
+        help="Allow insecure server connections")
+    parser.add_argument(
+        '--no-trunc', action='store_true',
+        help="Don't truncate output")
+    parser.add_argument(
+        '-u', '--username',
+        help="Username for authentication")
+    parser.add_argument(
+        '-p', '--password',
+        help="Password for authentication")
+    parser.add_argument('image')
+    return parser.parse_args()
+
+
+def main():
+    """
+    Main function
+    """
+    auth = (opts.username, opts.password) if opts.username else None
+    headers = {'User-Agent': "regview/" + __version__}
+    match = re.search(r'^((?:https?://)?[^:/]+(?::[0-9]+)?)/*(.*)', opts.image)
+    registry, image = match.group(1), match.group(2)
+    with DockerRegistry(registry, auth=auth, headers=headers, verify=not opts.insecure) as reg:
+        if image:
+            print_info(reg, image)
+            return
+        repos = reg.get_repos()
+        # repo_width = max(len(repo) for repo in repos)
+        image_width = int(get_terminal_size().columns / 2)
+        fmt = "%-{}s %-72s %s".format(image_width)
+        print(fmt % ("REPOSITORY TAG", "DIGEST", "ID"))
+        for repo, tags in reg.get_images(repos):
+            for tag in tags:
+                manifest = reg.get_manifest(repo, tag)
+                if manifest is None:
+                    continue
+                # info = get_info(reg.get_manifest(repo, tag, version=1))
+                docker_id, digest = manifest['config']['digest'], manifest['docker-content-digest']
+                if not opts.no_trunc:
+                    docker_id = docker_id[len("sha256:"):-52]
+                print(fmt % (f"{repo} {tag}", digest, docker_id))
+
+
+if __name__ == "__main__":
+    try:
+        logging.captureWarnings(True)
+        opts = parse_opts()
+        main()
+    except KeyboardInterrupt:
+        sys.exit(1)
