@@ -43,24 +43,24 @@ class DockerRegistry:
             self.session.headers.update(headers)
         self.session.verify = verify
         # Check if registry starts with a scheme and adjust accordingly
-        schemes = ("http://", "https://")
-        if registry.startswith(schemes):
+        if registry.startswith(("http://", "https://")):
             try:
                 req = self.session.get(f"{registry}/v2/")
             except RequestException as err:
                 sys.exit("%s" % err)
             self.registry = registry
         else:
-            for scheme in schemes:
-                try_url = f"{scheme}{registry}"
-                try:
-                    req = self.session.get(f"{try_url}/v2")
-                    self.registry = try_url
-                    break
-                except RequestException:
-                    pass
-        if not hasattr(self, "registry") or \
-                req.headers.get('docker-distribution-api-version') != 'registry/2.0':
+            try:
+                req = self.session.get(f"http://{registry}/v2/")
+                self.registry = f"http://{registry}"
+            except RequestException:
+                pass
+            try:
+                req = self.session.get(f"https://{registry}/v2/")
+                self.registry = f"https://{registry}"
+            except RequestException as err:
+                sys.exit("%s" % err)
+        if req.headers.get('docker-distribution-api-version') != 'registry/2.0':
             sys.exit(f"Invalid registry: {registry}")
 
     def __enter__(self):
