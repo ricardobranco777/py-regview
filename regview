@@ -109,9 +109,8 @@ class DockerRegistry:
         Get tags for specified repo
         """
         req = self.session.get(f"{self.registry}/v2/{repo}/tags/list")
-        if req.status_code != 200:
-            error = req.json()['errors'][0]['code']
-            print("ERROR: %s: %s" % (repo, error), file=sys.stderr)
+        if req.status_code != requests.codes.OK:
+            print(f"ERROR: {repo}: {req.reason}", file=sys.stderr)
             return repo, []
         tags = self._get_paginated(req, "tags")
         return repo, tags
@@ -125,8 +124,8 @@ class DockerRegistry:
         url = f"{self.registry}/v2/{repo}/manifests/{tag}"
         content_type = f"application/vnd.docker.distribution.manifest.v{version}+json"
         req = self.session.get(url, headers={"Accept": content_type})
-        if req.status_code != 200:
-            print(f"ERROR: {repo} ${tag} {req.reason}", file=sys.stderr)
+        if req.status_code != requests.codes.OK:
+            print(f"ERROR: {repo}:{tag}: {req.reason}", file=sys.stderr)
             return None
         manifest = req.json()
         if version == 1 and self._supports_schema_v1 is None:
