@@ -14,10 +14,12 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from getpass import getpass
+from http.client import HTTPConnection
 from shutil import get_terminal_size
 
 import requests
 from requests.exceptions import RequestException
+from urllib3 import disable_warnings
 
 
 __version__ = "0.1.0a"
@@ -204,6 +206,18 @@ def get_images(reg, repos):
         yield from executor.map(reg.get_tags, repos)
 
 
+def enable_debug():
+    """
+    Enable debugging
+    """
+    HTTPConnection.debuglevel = 1
+    logging.basicConfig()
+    logging.getLogger().setLevel(logging.DEBUG)
+    requests_log = logging.getLogger("urllib3")
+    requests_log.setLevel(logging.DEBUG)
+    requests_log.propagate = True
+
+
 def parse_opts():
     """
     Parse options and arguments
@@ -215,6 +229,9 @@ def parse_opts():
     parser.add_argument(
         '-k', '--key',
         help="Client private key filename (unencrypted)")
+    parser.add_argument(
+        '--debug',
+        help="Enable debug")
     parser.add_argument(
         '--insecure', action='store_true',
         help="Allow insecure server connections")
@@ -235,6 +252,9 @@ def main():  # pylint: disable=too-many-locals
     """
     Main function
     """
+    if opts.debug:
+        enable_debug()
+    disable_warnings()
     auth = (opts.username, opts.password) if opts.username else None
     cert = opts.cert
     if opts.cert and opts.key:
@@ -266,7 +286,6 @@ def main():  # pylint: disable=too-many-locals
 
 if __name__ == "__main__":
     try:
-        logging.captureWarnings(True)
         opts = parse_opts()
         main()
     except KeyboardInterrupt:
