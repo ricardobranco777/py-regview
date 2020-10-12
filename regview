@@ -112,7 +112,7 @@ class DockerRegistry:
             return fnmatch.filter(repos, pattern)
         return repos
 
-    def get_tags(self, repo):
+    def get_tags(self, repo, pattern):
         """
         Get tags for specified repo
         """
@@ -121,6 +121,8 @@ class DockerRegistry:
             print(f"ERROR: {repo}: {req.reason}", file=sys.stderr)
             return repo, []
         tags = self._get_paginated(req, "tags")
+        if pattern:
+            tags = fnmatch.filter(tags, pattern)
         return repo, tags
 
     def get_manifest(self, repo, tag, version=2):
@@ -202,12 +204,12 @@ def print_info(reg, image):
         print("%-20s\t%s" % (key, value))
 
 
-def get_images(reg, repos):
+def get_images(reg, repos, pattern_tag):
     """
     Get images"
     """
     with ThreadPoolExecutor() as executor:
-        yield from executor.map(reg.get_tags, repos)
+        yield from executor.map(lambda r: reg.get_tags(r, pattern_tag), repos)
 
 
 def enable_debug():
@@ -248,9 +250,6 @@ def parse_opts():
     parser.add_argument(
         '-p', '--password',
         help="Password for authentication")
-    parser.add_argument(
-        '-x', '--glob', action='store_true',
-        help="Filter repositories by regexp")
     parser.add_argument('image')
     return parser.parse_args()
 
@@ -271,15 +270,21 @@ def main():  # pylint: disable=too-many-locals
     registry, image = match.group(1), match.group(2)
     verify = not opts.insecure
     with DockerRegistry(registry, auth=auth, cert=cert, headers=headers, verify=verify) as reg:
-        if image and not opts.glob:
+        glob_repo, glob_tag = None, None
+        if re.search(r"\*|\?|\[", image):
+            if ':' in image:
+                glob_repo, glob_tag = image.split(':', 1)
+            else:
+                glob_repo = image
+        if image and not glob_repo:
             print_info(reg, image)
             return
-        repos = reg.get_repos(image)
+        repos = reg.get_repos(glob_repo)
         # repo_width = max(len(repo) for repo in repos)
         image_width = int(get_terminal_size().columns / 2)
         fmt = "%-{}s %-72s %s".format(image_width)
         print(fmt % ("REPOSITORY TAG", "DIGEST", "ID"))
-        for repo, tags in get_images(reg, repos):
+        for repo, tags in get_images(reg, repos, glob_tag):
             for tag in tags:
                 manifest = reg.get_manifest(repo, tag)
                 if manifest is None:
