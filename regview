@@ -135,13 +135,6 @@ class DockerRegistry:
             manifest['docker-content-digest'] = req.headers['docker-content-digest']
         return manifest
 
-    def get_images(self, repos):
-        """
-        Get images"
-        """
-        with ThreadPoolExecutor() as executor:
-            yield from executor.map(self.get_tags, repos)
-
 
 def get_info(manifest):
     """
@@ -200,6 +193,14 @@ def print_info(reg, image):
         print("%-20s\t%s" % (key, value))
 
 
+def get_images(reg, repos):
+    """
+    Get images"
+    """
+    with ThreadPoolExecutor() as executor:
+        yield from executor.map(reg.get_tags, repos)
+
+
 def parse_opts():
     """
     Parse options and arguments
@@ -238,7 +239,7 @@ def main():
         image_width = int(get_terminal_size().columns / 2)
         fmt = "%-{}s %-72s %s".format(image_width)
         print(fmt % ("REPOSITORY TAG", "DIGEST", "ID"))
-        for repo, tags in reg.get_images(repos):
+        for repo, tags in get_images(reg, repos):
             for tag in tags:
                 manifest = reg.get_manifest(repo, tag)
                 if manifest is None:
