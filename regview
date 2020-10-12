@@ -51,15 +51,14 @@ class DockerRegistry:
             self.registry = registry
         else:
             try:
-                req = self.session.get(f"http://{registry}/v2/")
-                self.registry = f"http://{registry}"
-            except RequestException:
-                pass
-            try:
                 req = self.session.get(f"https://{registry}/v2/")
                 self.registry = f"https://{registry}"
-            except RequestException as err:
-                sys.exit("%s" % err)
+            except RequestException:
+                try:
+                    req = self.session.get(f"http://{registry}/v2/")
+                    self.registry = f"http://{registry}"
+                except RequestException as err:
+                    sys.exit("%s" % err)
         if req.headers.get('docker-distribution-api-version') != 'registry/2.0':
             sys.exit(f"Invalid registry: {registry}")
 
