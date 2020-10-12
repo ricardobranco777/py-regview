@@ -32,7 +32,7 @@ class DockerRegistry:
     def __init__(self, registry, auth=None, headers=None, verify=True):
         self.session = requests.Session()
         if auth is None:
-            auth = tuple(base64.b64decode(self._get_creds(registry)).decode('utf-8').split(':', 1))
+            auth = self._get_creds(registry)
         elif auth[1] is None:
             auth = (auth[0], getpass("Password: "))
         self.session.auth = auth
@@ -71,16 +71,16 @@ class DockerRegistry:
         """
         Gets the credentials from ~/.docker/config.json
         """
-        if os.getenv("DOCKER_CONFIG"):
-            config_file = os.path.join(os.getenv("DOCKER_CONFIG"), "config.json")
-        else:
-            config_file = os.path.expanduser(os.path.join("~", ".docker", "config.json"))
+        config_file = os.path.join(
+            os.getenv("DOCKER_CONFIG", os.path.expanduser(os.path.join("~", ".docker"))),
+            "config.json")
         if not os.path.exists(config_file):
             return None
         with open(os.path.expanduser(config_file), "r") as file:
             config = json.load(file)
         try:
-            return config['auths'][registry.replace("http://", "")]['auth']
+            auth = config['auths'][registry.replace("http://", "")]['auth']
+            return tuple(base64.b64decode(auth).decode('utf-8').split(':', 1))
         except KeyError:
             pass
         return None
@@ -151,7 +151,6 @@ def get_info(manifest):
         'StopSignal', 'User', 'Volumes', 'WorkingDir'
     )
     info.update({key: data['config'].get(key, "") for key in keys})
-    info['created'] = pretty_date(info['created'])
     return info
 
 
@@ -184,6 +183,7 @@ def print_info(reg, image):
         repo, tag = image, "latest"
     manifest = reg.get_manifest(repo, tag)
     info = get_info(reg.get_manifest(repo, tag, version=1))
+    info['created'] = pretty_date(info['created'])
     info['ID'] = manifest['docker-content-digest']
     info['Digest'] = manifest['config']['digest']
     info['CompressedSize'] = pretty_size(sum([_['size'] for _ in manifest['layers']]))
