@@ -191,6 +191,8 @@ def print_info(reg, image):
     except ValueError:
         repo, tag = image, "latest"
     manifest = reg.get_manifest(repo, tag)
+    if manifest is None:
+        sys.exit(1)
     info = {}
     if not tag.startswith("sha256:"):
         info.update(get_info(reg.get_manifest(repo, tag, version=1)))
@@ -204,7 +206,7 @@ def print_info(reg, image):
         print("%-20s\t%s" % (key, value))
 
 
-def get_images(reg, repos, pattern_tag):
+def get_images(reg, repos, pattern_tag=None):
     """
     Get images"
     """
