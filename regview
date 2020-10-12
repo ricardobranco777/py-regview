@@ -32,8 +32,11 @@ class DockerRegistry:
     """
     _supports_schema_v1 = None
 
-    def __init__(self, registry, auth=None, cert=None, headers=None, verify=True):  # pylint: disable=too-many-arguments
+    def __init__(self, registry, auth=None, cert=None, headers=None, verify=True, debug=False):  # pylint: disable=too-many-arguments
         self.session = requests.Session()
+        if debug:
+            self._enable_debug()
+            self.session.hooks['response'].append(self._print_response)
         if auth is None:
             auth = self._get_creds(registry)
         elif auth[1] is None:
@@ -87,6 +90,27 @@ class DockerRegistry:
         except KeyError:
             pass
         return None
+
+    @staticmethod
+    def _enable_debug():
+        """
+        Enable debugging
+        """
+        HTTPConnection.debuglevel = 1
+        logging.basicConfig()
+        logging.getLogger().setLevel(logging.DEBUG)
+        requests_log = logging.getLogger("urllib3")
+        requests_log.setLevel(logging.DEBUG)
+        requests_log.propagate = True
+
+    @staticmethod
+    def _print_response(req, *args, **kwargs):  # pylint: disable=unused-argument
+        """
+        Print response to aid in debugging
+        """
+        req.hook_called = True
+        print(req.text)
+        return req
 
     def _get_paginated(self, req, string):
         """
@@ -214,18 +238,6 @@ def get_images(reg, repos, pattern_tag=None):
         yield from executor.map(lambda r: reg.get_tags(r, pattern_tag), repos)
 
 
-def enable_debug():
-    """
-    Enable debugging
-    """
-    HTTPConnection.debuglevel = 1
-    logging.basicConfig()
-    logging.getLogger().setLevel(logging.DEBUG)
-    requests_log = logging.getLogger("urllib3")
-    requests_log.setLevel(logging.DEBUG)
-    requests_log.propagate = True
-
-
 def parse_opts():
     """
     Parse options and arguments
@@ -238,7 +250,7 @@ def parse_opts():
         '-k', '--key',
         help="Client private key filename (unencrypted)")
     parser.add_argument(
-        '--debug',
+        '--debug', action='store_true',
         help="Enable debug")
     parser.add_argument(
         '--insecure', action='store_true',
@@ -260,8 +272,6 @@ def main():  # pylint: disable=too-many-locals
     """
     Main function
     """
-    if opts.debug:
-        enable_debug()
     disable_warnings()
     auth = (opts.username, opts.password) if opts.username else None
     cert = opts.cert
@@ -271,7 +281,7 @@ def main():  # pylint: disable=too-many-locals
     match = re.search(r'^((?:https?://)?[^:/]+(?::[0-9]+)?)/*(.*)', opts.image)
     registry, image = match.group(1), match.group(2)
     verify = not opts.insecure
-    with DockerRegistry(registry, auth=auth, cert=cert, headers=headers, verify=verify) as reg:
+    with DockerRegistry(registry, auth=auth, cert=cert, headers=headers, verify=verify, debug=opts.debug) as reg:
         glob_repo, glob_tag = None, None
         if re.search(r"\*|\?|\[", image):
             if ':' in image:
