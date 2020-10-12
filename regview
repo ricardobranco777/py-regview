@@ -182,12 +182,14 @@ def print_info(reg, image):
     Print info about image
     """
     try:
-        repo, tag = image.rsplit(':', 1)
+        repo, tag = image.split(':', 1)
     except ValueError:
         repo, tag = image, "latest"
     manifest = reg.get_manifest(repo, tag)
-    info = get_info(reg.get_manifest(repo, tag, version=1))
-    info['created'] = pretty_date(info['created'])
+    info = {}
+    if not tag.startswith("sha256:"):
+        info.update(get_info(reg.get_manifest(repo, tag, version=1)))
+        info['created'] = pretty_date(info['created'])
     info['ID'] = manifest['docker-content-digest']
     info['Digest'] = manifest['config']['digest']
     info['CompressedSize'] = pretty_size(sum([_['size'] for _ in manifest['layers']]))
