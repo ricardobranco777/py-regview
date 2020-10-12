@@ -29,13 +29,14 @@ class DockerRegistry:
     """
     _supports_schema_v1 = None
 
-    def __init__(self, registry, auth=None, headers=None, verify=True):
+    def __init__(self, registry, auth=None, cert=None, headers=None, verify=True):  # pylint: disable=too-many-arguments
         self.session = requests.Session()
         if auth is None:
             auth = self._get_creds(registry)
         elif auth[1] is None:
             auth = (auth[0], getpass("Password: "))
         self.session.auth = auth
+        self.session.cert = cert
         if headers is not None:
             self.session.headers.update(headers)
         self.session.verify = verify
@@ -101,6 +102,9 @@ class DockerRegistry:
         Get repositories and return a dict of dicts with the repos as keys
         """
         req = self.session.get(f"{self.registry}/v2/_catalog")
+        if req.status_code != requests.codes.OK:  # pylint: disable=no-member
+            print(f"ERROR: {self.registry}: {req.reason}", file=sys.stderr)
+            return None
         repos = self._get_paginated(req, "repositories")
         return repos
 
@@ -109,7 +113,7 @@ class DockerRegistry:
         Get tags for specified repo
         """
         req = self.session.get(f"{self.registry}/v2/{repo}/tags/list")
-        if req.status_code != requests.codes.OK:
+        if req.status_code != requests.codes.OK:  # pylint: disable=no-member
             print(f"ERROR: {repo}: {req.reason}", file=sys.stderr)
             return repo, []
         tags = self._get_paginated(req, "tags")
@@ -124,7 +128,7 @@ class DockerRegistry:
         url = f"{self.registry}/v2/{repo}/manifests/{tag}"
         content_type = f"application/vnd.docker.distribution.manifest.v{version}+json"
         req = self.session.get(url, headers={"Accept": content_type})
-        if req.status_code != requests.codes.OK:
+        if req.status_code != requests.codes.OK:  # pylint: disable=no-member
             print(f"ERROR: {repo}:{tag}: {req.reason}", file=sys.stderr)
             return None
         manifest = req.json()
@@ -206,6 +210,12 @@ def parse_opts():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        '-c', '--cert',
+        help="Client certificate filename (may contain unencrypted key)")
+    parser.add_argument(
+        '-k', '--key',
+        help="Client private key filename (unencrypted)")
+    parser.add_argument(
         '--insecure', action='store_true',
         help="Allow insecure server connections")
     parser.add_argument(
@@ -221,15 +231,19 @@ def parse_opts():
     return parser.parse_args()
 
 
-def main():
+def main():  # pylint: disable=too-many-locals
     """
     Main function
     """
     auth = (opts.username, opts.password) if opts.username else None
+    cert = opts.cert
+    if opts.cert and opts.key:
+        cert = (opts.cert, opts.key)
     headers = {'User-Agent': "regview/" + __version__}
     match = re.search(r'^((?:https?://)?[^:/]+(?::[0-9]+)?)/*(.*)', opts.image)
     registry, image = match.group(1), match.group(2)
-    with DockerRegistry(registry, auth=auth, headers=headers, verify=not opts.insecure) as reg:
+    verify = not opts.insecure
+    with DockerRegistry(registry, auth=auth, cert=cert, headers=headers, verify=verify) as reg:
         if image:
             print_info(reg, image)
             return
