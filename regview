@@ -18,6 +18,7 @@ from shutil import get_terminal_size
 
 import requests
 from requests.exceptions import RequestException
+from requests_toolbelt import GuessAuth
 from requests_toolbelt.utils import dump
 from urllib3 import disable_warnings
 
@@ -39,7 +40,7 @@ class DockerRegistry:
             auth = self._get_creds(registry)
         elif auth[1] is None:
             auth = (auth[0], getpass("Password: "))
-        self.session.auth = auth
+        self.session.auth = GuessAuth(*auth)
         self.session.cert = cert
         if headers is not None:
             self.session.headers.update(headers)
