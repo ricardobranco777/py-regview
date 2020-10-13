@@ -7,7 +7,6 @@ import argparse
 import base64
 import fnmatch
 import json
-import logging
 import os
 import re
 import sys
@@ -15,11 +14,11 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from getpass import getpass
-from http.client import HTTPConnection
 from shutil import get_terminal_size
 
 import requests
 from requests.exceptions import RequestException
+from requests_toolbelt.utils import dump
 from urllib3 import disable_warnings
 
 
@@ -35,7 +34,6 @@ class DockerRegistry:
     def __init__(self, registry, auth=None, cert=None, headers=None, verify=True, debug=False):  # pylint: disable=too-many-arguments
         self.session = requests.Session()
         if debug:
-            self._enable_debug()
             self.session.hooks['response'].append(self._print_response)
         if auth is None:
             auth = self._get_creds(registry)
@@ -92,24 +90,13 @@ class DockerRegistry:
         return None
 
     @staticmethod
-    def _enable_debug():
-        """
-        Enable debugging
-        """
-        HTTPConnection.debuglevel = 1
-        logging.basicConfig()
-        logging.getLogger().setLevel(logging.DEBUG)
-        requests_log = logging.getLogger("urllib3")
-        requests_log.setLevel(logging.DEBUG)
-        requests_log.propagate = True
-
-    @staticmethod
     def _print_response(req, *args, **kwargs):  # pylint: disable=unused-argument
         """
         Print response to aid in debugging
         """
         req.hook_called = True
-        print(req.text)
+        data = dump.dump_all(req)
+        print(data.decode('utf-8'))
         return req
 
     def _get_paginated(self, req, string):
