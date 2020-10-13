@@ -99,27 +99,31 @@ class DockerRegistry:
         print(data.decode('utf-8'))
         return req
 
-    def _get_paginated(self, req, string):
+    def _get_paginated(self, url, string):
         """
         Get paginated results
         """
-        items = req.json()[string]
-        while 'Link' in req.headers:
-            url = self.registry + req.headers['Link'][1:len('>; rel="next"')]
+        items = []
+        while True:
             req = self.session.get(url)
+            if req.status_code != requests.codes.OK:  # pylint: disable=no-member
+                print(f"ERROR: {url}: {req.reason}", file=sys.stderr)
+                return None
             items.extend(req.json()[string])
+            if 'Link' in req.headers:
+                url = requests.utils.parse_header_links(req.headers['Link'])[0]['url']
+                if url.startswith("/v2"):
+                    url = f"{self.registry}{url}"
+            else:
+                break
         return items
 
     def get_repos(self, pattern=None):
         """
         Get repositories and return a dict of dicts with the repos as keys
         """
-        req = self.session.get(f"{self.registry}/v2/_catalog")
-        if req.status_code != requests.codes.OK:  # pylint: disable=no-member
-            print(f"ERROR: {self.registry}: {req.reason}", file=sys.stderr)
-            return None
-        repos = self._get_paginated(req, "repositories")
-        if pattern:
+        repos = self._get_paginated(f"{self.registry}/v2/_catalog", "repositories")
+        if repos and pattern:
             return fnmatch.filter(repos, pattern)
         return repos
 
@@ -127,12 +131,8 @@ class DockerRegistry:
         """
         Get tags for specified repo
         """
-        req = self.session.get(f"{self.registry}/v2/{repo}/tags/list")
-        if req.status_code != requests.codes.OK:  # pylint: disable=no-member
-            print(f"ERROR: {repo}: {req.reason}", file=sys.stderr)
-            return repo, []
-        tags = self._get_paginated(req, "tags")
-        if pattern:
+        tags = self._get_paginated(f"{self.registry}/v2/{repo}/tags/list", "tags")
+        if tags and pattern:
             tags = fnmatch.filter(tags, pattern)
         return repo, tags
 
