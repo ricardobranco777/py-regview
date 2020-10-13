@@ -136,7 +136,7 @@ class DockerRegistry:
             tags = fnmatch.filter(tags, pattern)
         return repo, tags
 
-    def get_manifest(self, repo, tag, version=2):
+    def get_manifest(self, repo, tag, version=2, ignore_errors=False):
         """
         Get the manifest
         """
@@ -146,7 +146,8 @@ class DockerRegistry:
         content_type = f"application/vnd.docker.distribution.manifest.v{version}+json"
         req = self.session.get(url, headers={"Accept": content_type})
         if req.status_code != requests.codes.OK:  # pylint: disable=no-member
-            print(f"ERROR: {repo}:{tag}: {req.reason}", file=sys.stderr)
+            if not ignore_errors:
+                print(f"ERROR: {repo}:{tag}: {req.reason}", file=sys.stderr)
             return None
         manifest = req.json()
         if version == 1 and self._supports_schema_v1 is None:
@@ -206,8 +207,10 @@ def print_fullinfo(reg, image):
         sys.exit(1)
     info = {}
     if not tag.startswith("sha256:"):
-        info.update(get_info(reg.get_manifest(repo, tag, version=1)))
-        info['created'] = pretty_date(info['created'])
+        manifest_v1 = reg.get_manifest(repo, tag, version=1, ignore_errors=True)
+        if manifest_v1:
+            info.update(get_info(manifest_v1))
+            info['created'] = pretty_date(info['created'])
     info['ID'] = manifest['docker-content-digest']
     info['Digest'] = manifest['config']['digest']
     info['CompressedSize'] = pretty_size(sum([_['size'] for _ in manifest['layers']]))
