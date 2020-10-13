@@ -9,6 +9,9 @@ View the contents of a Docker Registry v2
 ```
 regview [-h] [--insecure] [--no-trunc] [-u USERNAME] [-p PASSWORD] REGISTRY|IMAGE
   -h, --help            show this help message and exit
+  -c CERT, --cert CERT  Client certificate filename (may contain unencrypted key)
+  -k KEY, --key KEY     Client private key filename (unencrypted)
+  --debug               Enable debug
   --insecure            Allow insecure server connections
   --no-trunc            Don't truncate output
   -u USERNAME, --username USERNAME
