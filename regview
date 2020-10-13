@@ -299,6 +299,8 @@ def main():
             print_fullinfo(reg, image)
             return
         repos = reg.get_repos(glob_repo)
+        if not repos:
+            sys.exit(1)
         # repo_width = max(len(repo) for repo in repos)
         image_width = int(get_terminal_size().columns / 2)
         fmt = "%-{}s %-72s %s".format(image_width)
