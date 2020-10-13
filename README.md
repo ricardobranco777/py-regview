@@ -11,6 +11,8 @@ regview [-h] [--insecure] [--no-trunc] [-u USERNAME] [-p PASSWORD] REGISTRY|IMAG
   -h, --help            show this help message and exit
   -c CERT, --cert CERT  Client certificate filename (may contain unencrypted key)
   -k KEY, --key KEY     Client private key filename (unencrypted)
+  -C CA_CERT, --ca-cert CA_CERT
+                        CA certificate for server
   --debug               Enable debug
   --insecure            Allow insecure server connections
   --no-trunc            Don't truncate output
