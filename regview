@@ -47,21 +47,21 @@ class DockerRegistry:
         # Check if registry starts with a scheme and adjust accordingly
         if registry.startswith(("http://", "https://")):
             try:
-                req = self.session.get(f"{registry}/v2/")
+                got = self.session.get(f"{registry}/v2/")
             except RequestException as err:
                 sys.exit("%s" % err)
             self.registry = registry
         else:
             try:
-                req = self.session.get(f"https://{registry}/v2/")
+                got = self.session.get(f"https://{registry}/v2/")
                 self.registry = f"https://{registry}"
             except RequestException:
                 try:
-                    req = self.session.get(f"http://{registry}/v2/")
+                    got = self.session.get(f"http://{registry}/v2/")
                     self.registry = f"http://{registry}"
                 except RequestException as err:
                     sys.exit("%s" % err)
-        if req.headers.get('docker-distribution-api-version') != 'registry/2.0':
+        if got.headers.get('docker-distribution-api-version') != 'registry/2.0':
             sys.exit(f"Invalid registry: {registry}")
 
     def __enter__(self):
@@ -90,14 +90,14 @@ class DockerRegistry:
         return None
 
     @staticmethod
-    def _print_response(req, *args, **kwargs):  # pylint: disable=unused-argument
+    def _print_response(got, *args, **kwargs):  # pylint: disable=unused-argument
         """
         Print response to aid in debugging
         """
-        req.hook_called = True
-        data = dump.dump_all(req)
+        got.hook_called = True
+        data = dump.dump_all(got)
         print(data.decode('utf-8'))
-        return req
+        return got
 
     def _get_paginated(self, url, string):
         """
@@ -105,13 +105,13 @@ class DockerRegistry:
         """
         items = []
         while True:
-            req = self.session.get(url)
-            if req.status_code != requests.codes.OK:  # pylint: disable=no-member
-                print(f"ERROR: {url}: {req.reason}", file=sys.stderr)
+            got = self.session.get(url)
+            if got.status_code != requests.codes.OK:  # pylint: disable=no-member
+                print(f"ERROR: {url}: {got.reason}", file=sys.stderr)
                 return None
-            items.extend(req.json()[string])
-            if 'Link' in req.headers:
-                url = requests.utils.parse_header_links(req.headers['Link'])[0]['url']
+            items.extend(got.json()[string])
+            if 'Link' in got.headers:
+                url = requests.utils.parse_header_links(got.headers['Link'])[0]['url']
                 if url.startswith("/v2"):
                     url = f"{self.registry}{url}"
             else:
@@ -144,16 +144,16 @@ class DockerRegistry:
             return None
         url = f"{self.registry}/v2/{repo}/manifests/{tag}"
         content_type = f"application/vnd.docker.distribution.manifest.v{version}+json"
-        req = self.session.get(url, headers={"Accept": content_type})
-        if req.status_code != requests.codes.OK:  # pylint: disable=no-member
+        got = self.session.get(url, headers={"Accept": content_type})
+        if got.status_code != requests.codes.OK:  # pylint: disable=no-member
             if not ignore_errors:
-                print(f"ERROR: {repo}:{tag}: {req.reason}", file=sys.stderr)
+                print(f"ERROR: {repo}:{tag}: {got.reason}", file=sys.stderr)
             return None
-        manifest = req.json()
+        manifest = got.json()
         if version == 1 and self._supports_schema_v1 is None:
             self._supports_schema_v1 = manifest['schemaVersion'] == 1
         elif version == 2:
-            manifest['docker-content-digest'] = req.headers['docker-content-digest']
+            manifest['docker-content-digest'] = got.headers['docker-content-digest']
         return manifest
 
 
