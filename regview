@@ -206,9 +206,9 @@ def pretty_date(string):
     return utc_date.astimezone().strftime("%a %b %d %H:%M:%S %Z %Y")
 
 
-def print_info(reg, image):
+def print_fullinfo(reg, image):
     """
-    Print info about image
+    Print full info about image
     """
     try:
         repo, tag = image.split(':', 1)
@@ -228,6 +228,20 @@ def print_info(reg, image):
         if not value:
             continue
         print("%-20s\t%s" % (key, value))
+
+
+def print_info(reg, repo, tag, fmt):
+    """
+    Print full info about image
+    """
+    manifest = reg.get_manifest(repo, tag)
+    if manifest is None:
+        return
+    # info = get_info(reg.get_manifest(repo, tag, version=1))
+    docker_id, digest = manifest['config']['digest'], manifest['docker-content-digest']
+    if not opts.no_trunc:
+        docker_id = docker_id[len("sha256:"):-52]
+    print(fmt % (f"{repo} {tag}", digest, docker_id))
 
 
 def get_images(reg, repos, pattern_tag=None):
@@ -268,20 +282,20 @@ def parse_opts():
     return parser.parse_args()
 
 
-def main():  # pylint: disable=too-many-locals
+def main():
     """
     Main function
     """
     disable_warnings()
-    auth = (opts.username, opts.password) if opts.username else None
-    cert = opts.cert
-    if opts.cert and opts.key:
-        cert = (opts.cert, opts.key)
-    headers = {'User-Agent': "regview/" + __version__}
     match = re.search(r'^((?:https?://)?[^:/]+(?::[0-9]+)?)/*(.*)', opts.image)
     registry, image = match.group(1), match.group(2)
-    verify = not opts.insecure
-    with DockerRegistry(registry, auth=auth, cert=cert, headers=headers, verify=verify, debug=opts.debug) as reg:
+    with DockerRegistry(
+            registry,
+            auth=(opts.username, opts.password) if opts.username else None,
+            cert=(opts.cert, opts.key) if opts.cert and opts.key else opts.cert,
+            headers={'User-Agent': "regview/" + __version__},
+            verify=not opts.insecure,
+            debug=opts.debug) as reg:
         glob_repo, glob_tag = None, None
         if re.search(r"\*|\?|\[", image):
             if ':' in image:
@@ -289,7 +303,7 @@ def main():  # pylint: disable=too-many-locals
             else:
                 glob_repo = image
         if image and not glob_repo:
-            print_info(reg, image)
+            print_fullinfo(reg, image)
             return
         repos = reg.get_repos(glob_repo)
         # repo_width = max(len(repo) for repo in repos)
@@ -298,14 +312,7 @@ def main():  # pylint: disable=too-many-locals
         print(fmt % ("REPOSITORY TAG", "DIGEST", "ID"))
         for repo, tags in get_images(reg, repos, glob_tag):
             for tag in tags:
-                manifest = reg.get_manifest(repo, tag)
-                if manifest is None:
-                    continue
-                # info = get_info(reg.get_manifest(repo, tag, version=1))
-                docker_id, digest = manifest['config']['digest'], manifest['docker-content-digest']
-                if not opts.no_trunc:
-                    docker_id = docker_id[len("sha256:"):-52]
-                print(fmt % (f"{repo} {tag}", digest, docker_id))
+                print_info(reg, repo, tag, fmt)
 
 
 if __name__ == "__main__":
