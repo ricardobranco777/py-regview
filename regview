@@ -138,23 +138,27 @@ class DockerRegistry:
             tags = fnmatch.filter(tags, pattern)
         return repo, tags
 
-    def get_manifest(self, repo, tag, version=2, ignore_errors=False):
+    def get_manifest(self, repo, tag, version=2, fat=False):
         """
         Get the manifest
         """
         if version == 1 and self._supports_schema_v1 is False:
             return None
         url = f"{self.registry}/v2/{repo}/manifests/{tag}"
-        content_type = f"application/vnd.docker.distribution.manifest.v{version}+json"
+        if fat:
+            content_type = "application/vnd.docker.distribution.manifest.list.v2+json"
+        else:
+            content_type = f"application/vnd.docker.distribution.manifest.v{version}+json"
         got = self.session.get(url, headers={"Accept": content_type})
         if got.status_code != requests.codes.OK:  # pylint: disable=no-member
-            if not ignore_errors:
+            if version != 1:
                 print(f"ERROR: {repo}:{tag}: {got.reason}", file=sys.stderr)
             return None
         manifest = got.json()
-        if version == 1 and self._supports_schema_v1 is None:
+        # Docker distribution may send a v1 when asked for a fat v2 that doesn't exist
+        if manifest['schemaVersion'] == 1 and self._supports_schema_v1 is None:
             self._supports_schema_v1 = manifest['schemaVersion'] == 1
-        elif version == 2:
+        elif got.headers['content-type'] == "application/vnd.docker.distribution.manifest.v2+json":
             manifest['docker-content-digest'] = got.headers['docker-content-digest']
         return manifest
 
@@ -163,7 +167,7 @@ def get_info(manifest):
     """
     Get info from manifest schemaVersion 1
     """
-    if manifest is None:
+    if not manifest:
         return None
     data = json.loads(manifest['history'][0]['v1Compatibility'])
     keys = ('architecture', 'created', 'docker_version', 'os')
@@ -196,20 +200,51 @@ def pretty_date(string):
     return utc_date.astimezone().strftime("%a %b %d %H:%M:%S %Z %Y")
 
 
-def print_fullinfo(reg, image):
+def print_fat_manifest(reg, repo, fat_manifest):
+    """
+    Print fat manifest
+    """
+    for item in fat_manifest['manifests']:
+        manifest = reg.get_manifest(repo, item['digest'])
+        if not manifest:
+            sys.exit(1)
+        info = {}
+        info['ID'] = item['digest']
+        info['Digest'] = manifest['config']['digest']
+        info['CompressedSize'] = pretty_size(sum([_['size'] for _ in manifest['layers']]))
+        keys = ('architecture', 'os', 'variant')
+        info.update({key: item['platform'][key] for key in keys if key in item['platform']})
+        for key, value in info.items():
+            print("%-20s\t%s" % (key, value))
+        print()
+
+
+def print_fullinfo(reg, repo, tag="latest"):
     """
     Print full info about image
     """
-    try:
-        repo, tag = image.split(':', 1)
-    except ValueError:
-        repo, tag = image, "latest"
+    manifest_v1 = None
+    fat_manifest = None
+
+    # Get fat manifest
+    if not tag.startswith("sha256:"):
+        fat_manifest = reg.get_manifest(repo, tag, fat=True)
+        if fat_manifest and 'manifests' in fat_manifest:
+            print_fat_manifest(reg, repo, fat_manifest)
+            return
+
+    # Docker distribution may send a v1 when asked for a fat v2 that doesn't exist
+    if fat_manifest and fat_manifest['schemaVersion'] == 1:
+        manifest_v1 = fat_manifest
+
+    # Single manifest
     manifest = reg.get_manifest(repo, tag)
-    if manifest is None:
+    if not manifest:
         sys.exit(1)
     info = {}
     if not tag.startswith("sha256:"):
-        manifest_v1 = reg.get_manifest(repo, tag, version=1, ignore_errors=True)
+        if not manifest_v1:
+            manifest_v1 = reg.get_manifest(repo, tag, version=1)
         if manifest_v1:
             info.update(get_info(manifest_v1))
             info['created'] = pretty_date(info['created'])
@@ -227,7 +262,7 @@ def print_info(reg, repo, tag, fmt):
     Print full info about image
     """
     manifest = reg.get_manifest(repo, tag)
-    if manifest is None:
+    if not manifest:
         return
     # info = get_info(reg.get_manifest(repo, tag, version=1))
     docker_id, digest = manifest['config']['digest'], manifest['docker-content-digest']
@@ -294,7 +329,7 @@ def main():
         if re.search(r"\*|\?|\[", image):
             glob_repo, glob_tag = image.split(':', 1) if ':' in image else (image, None)
         if image and not glob_repo:
-            print_fullinfo(reg, image)
+            print_fullinfo(reg, *image.split(':', 1))
             return
         repos = reg.get_repos(glob_repo)
         if not repos:
