@@ -1,3 +1,3 @@
 test:
-	@pylint regview --disable=line-too-long
+	@pylint regview
 	@flake8 regview --ignore=E501

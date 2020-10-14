@@ -326,10 +326,11 @@ def main():
             verify=opts.ca_cert if opts.ca_cert else not opts.insecure,
             debug=opts.debug) as reg:
         glob_repo, glob_tag = None, None
-        if re.search(r"\*|\?|\[", image):
+        if '@' not in image and re.search(r"\*|\?|\[", image):
             glob_repo, glob_tag = image.split(':', 1) if ':' in image else (image, None)
         if image and not glob_repo:
-            print_fullinfo(reg, *image.split(':', 1))
+            sep = '@' if '@' in image else ':'
+            print_fullinfo(reg, *image.split(sep, 1))
             return
         repos = reg.get_repos(glob_repo)
         if not repos:
