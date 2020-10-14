@@ -35,13 +35,13 @@ class DockerRegistry:
         self.session = requests.Session()
         if debug:
             self.session.hooks['response'].append(self._print_response)
-        if auth is None:
+        if not auth:
             auth = self._get_creds(registry)
-        elif auth[1] is None:
+        elif len(auth) < 2:
             auth = (auth[0], getpass("Password: "))
         self.session.auth = auth
         self.session.cert = cert
-        if headers is not None:
+        if headers:
             self.session.headers.update(headers)
         self.session.verify = verify
         # Check if registry starts with a scheme and adjust accordingly
@@ -79,10 +79,11 @@ class DockerRegistry:
         config_file = os.path.join(
             os.getenv("DOCKER_CONFIG", os.path.expanduser(os.path.join("~", ".docker"))),
             "config.json")
-        if not os.path.exists(config_file):
-            return None
-        with open(os.path.expanduser(config_file), "r") as file:
-            config = json.load(file)
+        try:
+            with open(os.path.expanduser(config_file), "r") as file:
+                config = json.load(file)
+        except OSError:
+            pass
         try:
             auth = config['auths'][registry.replace("http://", "")]['auth']
             return tuple(base64.b64decode(auth).decode('utf-8').split(':', 1))
@@ -113,7 +114,7 @@ class DockerRegistry:
             items.extend(got.json()[string])
             if 'Link' in got.headers:
                 url = requests.utils.parse_header_links(got.headers['Link'])[0]['url']
-                if url.startswith("/v2"):
+                if url.startswith("/v2/"):
                     url = f"{self.registry}{url}"
             else:
                 break
@@ -291,10 +292,7 @@ def main():
             debug=opts.debug) as reg:
         glob_repo, glob_tag = None, None
         if re.search(r"\*|\?|\[", image):
-            if ':' in image:
-                glob_repo, glob_tag = image.split(':', 1)
-            else:
-                glob_repo = image
+            glob_repo, glob_tag = image.split(':', 1) if ':' in image else (image, None)
         if image and not glob_repo:
             print_fullinfo(reg, image)
             return
