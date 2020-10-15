@@ -34,6 +34,7 @@ class DockerRegistry:
 
     def __init__(self, registry, auth=None, cert=None, headers=None, verify=True, debug=False):  # pylint: disable=too-many-arguments
         self.session = requests.Session()
+        logging.basicConfig(format='%(levelname)s: %(message)s')
         if debug:
             self._enable_debug()
         if not auth:
@@ -50,7 +51,8 @@ class DockerRegistry:
             try:
                 got = self.session.get(f"{registry}/v2/")
             except RequestException as err:
-                sys.exit("%s" % err)
+                logging.error("%s", err)
+                sys.exit(1)
             self.registry = registry
         else:
             try:
@@ -61,9 +63,11 @@ class DockerRegistry:
                     got = self.session.get(f"http://{registry}/v2/")
                     self.registry = f"http://{registry}"
                 except RequestException as err:
-                    sys.exit("%s" % err)
+                    logging.error("%s", err)
+                    sys.exit(1)
         if got.headers.get('docker-distribution-api-version') != 'registry/2.0':
-            sys.exit(f"Invalid registry: {registry}")
+            logging.error("Invalid registry: %s", registry)
+            sys.exit(1)
         disable_warnings()
 
     def __enter__(self):
@@ -73,7 +77,6 @@ class DockerRegistry:
         self.session.close()
 
     def _enable_debug(self):
-        logging.basicConfig()
         logging.getLogger().setLevel(logging.DEBUG)
         requests_log = logging.getLogger("urllib3")
         requests_log.setLevel(logging.DEBUG)
@@ -118,7 +121,7 @@ class DockerRegistry:
         while True:
             got = self.session.get(url)
             if got.status_code != requests.codes.OK:  # pylint: disable=no-member
-                print(f"ERROR: {url}: {got.reason}", file=sys.stderr)
+                logging.error("%s: %s", url, got.reason)
                 return None
             items.extend(got.json()[string])
             if 'Link' in got.headers:
@@ -161,7 +164,7 @@ class DockerRegistry:
         got = self.session.get(url, headers={"Accept": content_type})
         if got.status_code != requests.codes.OK:  # pylint: disable=no-member
             if version != 1:
-                print(f"ERROR: {repo}:{tag}: {got.reason}", file=sys.stderr)
+                logging.error("%s:%s: %s", repo, tag, got.reason)
             return None
         manifest = got.json()
         # Docker distribution may send a v1 when asked for a fat v2 that doesn't exist
