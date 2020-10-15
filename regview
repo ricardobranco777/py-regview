@@ -7,6 +7,7 @@ import argparse
 import base64
 import fnmatch
 import json
+import logging
 import os
 import re
 import sys
@@ -34,7 +35,7 @@ class DockerRegistry:
     def __init__(self, registry, auth=None, cert=None, headers=None, verify=True, debug=False):  # pylint: disable=too-many-arguments
         self.session = requests.Session()
         if debug:
-            self.session.hooks['response'].append(self._print_response)
+            self._enable_debug()
         if not auth:
             auth = self._get_creds(registry)
         elif len(auth) < 2:
@@ -70,6 +71,14 @@ class DockerRegistry:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.session.close()
+
+    def _enable_debug(self):
+        logging.basicConfig()
+        logging.getLogger().setLevel(logging.DEBUG)
+        requests_log = logging.getLogger("urllib3")
+        requests_log.setLevel(logging.DEBUG)
+        requests_log.propagate = True
+        self.session.hooks['response'].append(self._print_response)
 
     @staticmethod
     def _get_creds(registry):
