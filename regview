@@ -227,7 +227,9 @@ def print_fat_manifest(reg, repo, fat_manifest):
         info['CompressedSize'] = pretty_size(sum([_['size'] for _ in manifest['layers']]))
         keys = ('architecture', 'os', 'variant')
         info.update({key: item['platform'][key] for key in keys if key in item['platform']})
-        for key, value in info.items():
+        keys = ('features', 'os.features')
+        info.update({key: ",".join(info[key]) for key in keys if key in info})
+        for key, value in sorted(info.items()):
             print("%-20s\t%s" % (key, value))
         print()
 
