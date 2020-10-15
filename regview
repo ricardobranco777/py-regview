@@ -279,7 +279,7 @@ def print_info(reg, repo, tag, fmt):
     # info = get_info(reg.get_manifest(repo, tag, version=1))
     docker_id, digest = manifest['config']['digest'], manifest['docker-content-digest']
     if not opts.no_trunc:
-        docker_id = docker_id[len("sha256:"):-52]
+        docker_id = docker_id[len("sha256:"):len("sha256:") + 12]
     print(fmt % (f"{repo} {tag}", digest, docker_id))
 
 
