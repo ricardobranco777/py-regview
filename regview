@@ -92,15 +92,17 @@ class DockerRegistry:
             os.getenv("DOCKER_CONFIG", os.path.expanduser(os.path.join("~", ".docker"))),
             "config.json")
         try:
-            with open(os.path.expanduser(config_file)) as file:
+            with open(config_file) as file:
                 config = json.load(file)
         except OSError:
             return None
-        try:
-            auth = config['auths'][registry.replace("http://", "")]['auth']
-            return tuple(base64.b64decode(auth).decode('utf-8').split(':', 1))
-        except KeyError:
-            pass
+        stripped = re.sub("^https?://", "", registry)
+        for try_registry in (f"https://{registry}", f"http://{registry}", stripped):
+            try:
+                auth = config['auths'][try_registry]['auth']
+                return tuple(base64.b64decode(auth).decode('utf-8').split(':', 1))
+            except KeyError:
+                pass
         return None
 
     @staticmethod
