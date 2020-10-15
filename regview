@@ -319,7 +319,7 @@ def parse_opts():
         '-k', '--key',
         help="Client private key filename (unencrypted)")
     parser.add_argument(
-        '-C', '--ca-cert',
+        '-C', '--cacert',
         help="CA certificate for server")
     parser.add_argument(
         '--debug', action='store_true',
@@ -354,7 +354,7 @@ def main():
             auth=(opts.username, opts.password) if opts.username else None,
             cert=(opts.cert, opts.key) if opts.cert and opts.key else opts.cert,
             headers={'User-Agent': "regview/" + __version__},
-            verify=opts.ca_cert if opts.ca_cert else not opts.insecure,
+            verify=opts.cacert if opts.cacert else not opts.insecure,
             debug=opts.debug) as reg:
         glob_repo, glob_tag = None, None
         if '@' not in image and re.search(r"\*|\?|\[", image):
