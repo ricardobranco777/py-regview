@@ -27,3 +27,4 @@ regview [-h] [--insecure] [--no-trunc] [-u USERNAME] [-p PASSWORD] REGISTRY|IMAG
 - Python 3.6+
 - requests
 - requests-toolbet
+- python-dateutil
