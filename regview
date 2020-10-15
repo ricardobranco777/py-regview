@@ -268,6 +268,19 @@ def print_fullinfo(reg, repo, tag="latest"):
         if not value:
             continue
         print("%-20s\t%s" % (key, value))
+    if opts.verbose and manifest_v1:
+        print_history(manifest_v1)
+
+
+def print_history(manifest):
+    """
+    Print history
+    """
+    lines = [
+        " ".join(json.loads(item['v1Compatibility'])['container_config']['Cmd'])
+        for item in reversed(manifest['history'])]
+    for i, line in enumerate(lines):
+        print(f"History[{i}]\t\t{line}")
 
 
 def print_info(reg, repo, tag, fmt):
@@ -321,6 +334,9 @@ def parse_opts():
     parser.add_argument(
         '-p', '--password',
         help="Password for authentication")
+    parser.add_argument(
+        '-v', '--verbose', action='store_true',
+        help="Print image history if available")
     parser.add_argument('image')
     return parser.parse_args()
 
