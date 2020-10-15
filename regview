@@ -13,10 +13,10 @@ import re
 import sys
 
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
 from getpass import getpass
 from shutil import get_terminal_size
 
+import dateutil.parser
 import requests
 from requests.exceptions import RequestException
 from requests_toolbelt.utils import dump
@@ -208,7 +208,8 @@ def pretty_date(string):
     """
     Converts date/time string in ISO-8601 format to date(1)
     """
-    utc_date = datetime.fromisoformat(re.sub(r"\.\d+Z$", "+00:00", string))
+    # utc_date = datetime.fromisoformat(re.sub(r"\.\d+Z$", "+00:00", string))  # Python 3.7+ only
+    utc_date = dateutil.parser.isoparse(string).replace(tzinfo=None)
     return utc_date.astimezone().strftime("%a %b %d %H:%M:%S %Z %Y")
 
 
