@@ -4,8 +4,7 @@ COPY    requirements.txt /tmp
 
 RUN	apk add --no-cache tzdata && \
         pip install --no-cache-dir -r /tmp/requirements.txt && \
-	python -OO -m compileall && \
-	ln -s /usr/local/bin/python3 /usr/bin
+	python -OO -m compileall
 
 RUN	adduser -D user -h /user
 
@@ -17,4 +16,4 @@ ENV	PYTHONUNBUFFERED 1
 WORKDIR	/user
 
 USER	user
-ENTRYPOINT ["/regview"]
+ENTRYPOINT ["/usr/local/bin/python3", "/regview"]
