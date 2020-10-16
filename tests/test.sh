@@ -2,7 +2,6 @@
 
 set -e
 
-regview="python3 regview"
 port=$RANDOM
 name=registry$port
 image=regview_test
@@ -40,23 +39,25 @@ test_proto () {
 	proto="$1"
 
 	# Test proto
-	$regview $options localhost:$port | grep -q $image
-	$regview $options $proto://localhost:$port | grep -q $image
+	regview $options localhost:$port | grep -q $image
+	regview $options $proto://localhost:$port | grep -q $image
 
 	# Test image
-	$regview $options localhost:$port/$image:latest | grep -q $digest
-	$regview $options $proto://localhost:$port/$image:latest | grep -q $digest
+	regview $options localhost:$port/$image:latest | grep -q $digest
+	regview $options $proto://localhost:$port/$image:latest | grep -q $digest
 
 	# Test digest
-	$regview $options localhost:$port/$image@$digest | grep -q $digest
-	$regview $options $proto://localhost:$port/$image@$digest | grep -q $digest
+	regview $options localhost:$port/$image@$digest | grep -q $digest
+	regview $options $proto://localhost:$port/$image@$digest | grep -q $digest
 
 	# Test glob in repository and tag
-	$regview $options localhost:$port/${image:0:2}* | grep -q $digest
-	$regview $options localhost:$port/${image:0:2}*:late* | grep -q $digest
-	$regview $options localhost:$port/${image:0:2}*:latest | grep -q $digest
-	$regview $options localhost:$port/$image:late* | grep -q $digest
+	regview $options localhost:$port/${image:0:2}* | grep -q $digest
+	regview $options localhost:$port/${image:0:2}*:late* | grep -q $digest
+	regview $options localhost:$port/${image:0:2}*:latest | grep -q $digest
+	regview $options localhost:$port/$image:late* | grep -q $digest
 }
+
+echo "Testing HTTP"
 
 test_proto http
 
@@ -79,14 +80,16 @@ sudo docker run -d \
 
 sleep 5
 
-# Test authentication with credentials from config.json
+echo "Testing HTTPS with Basic Auth getting credentials from config.json"
+
 export DOCKER_CONFIG="$PWD/tests"
 echo '{"auths": {"https://localhost:'$port'": {"auth": "dGVzdHVzZXI6dGVzdHBhc3N3b3Jk"}}}' > $DOCKER_CONFIG/config.json
 options="-c $certs/client.pem -k $certs/client.key -C $certs/ca.pem"
 test_proto https
 unset DOCKER_CONFIG
 
-# Test authentication with username & password specified
+echo "Testing HTTPS with Basic Auth with username & password specified"
+
 options="$options -u testuser -p testpassword"
 
 test_proto https
