@@ -96,8 +96,8 @@ class DockerRegistry:
                 config = json.load(file)
         except OSError:
             return None
-        stripped = re.sub("^https?://", "", registry)
-        for try_registry in (f"https://{registry}", f"http://{registry}", stripped):
+        registry = re.sub("^https?://", "", registry)
+        for try_registry in (f"https://{registry}", f"http://{registry}", registry):
             try:
                 auth = config['auths'][try_registry]['auth']
                 return tuple(base64.b64decode(auth).decode('utf-8').split(':', 1))
