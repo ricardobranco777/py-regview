@@ -181,17 +181,15 @@ def get_info(manifest):
     """
     Get info from manifest schemaVersion 1
     """
-    if not manifest:
-        return None
     data = json.loads(manifest['history'][0]['v1Compatibility'])
     keys = ('architecture', 'created', 'docker_version', 'os')
-    info = {key: data[key] for key in keys}
+    info = {key: data[key] for key in keys if data.get(key)}
     keys = (
         'Cmd', 'Entrypoint', 'Env', 'ExposedPorts',
         'Healthcheck', 'Labels', 'OnBuild', 'Shell',
         'StopSignal', 'User', 'Volumes', 'WorkingDir'
     )
-    info.update({key: data['config'].get(key, "") for key in keys})
+    info.update({key: data['config'][key] for key in keys if data['config'].get(key)})
     return info
 
 
@@ -269,8 +267,6 @@ def print_fullinfo(reg, repo, tag="latest"):
     info['Digest'] = manifest['config']['digest']
     info['CompressedSize'] = pretty_size(sum([_['size'] for _ in manifest['layers']]))
     for key, value in info.items():
-        if not value:
-            continue
         print("%-20s\t%s" % (key, value))
     if opts.verbose and manifest_v1:
         print_history(manifest_v1)
