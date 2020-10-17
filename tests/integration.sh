@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -xeE
 
 port=$RANDOM
 name=registry$port

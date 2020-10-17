@@ -13,4 +13,4 @@ install:
 
 script:
   - make test
-  - make testit
+  - make test-integration
