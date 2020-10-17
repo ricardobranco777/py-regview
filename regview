@@ -345,6 +345,9 @@ def main():
     """
     match = re.search(r'^((?:https?://)?[^:/]+(?::[0-9]+)?)/*(.*)', opts.image)
     registry, image = match.group(1), match.group(2)
+    glob_repo, glob_tag = None, None
+    if '@' not in image and re.search(r"\*|\?|\[", image):
+        glob_repo, glob_tag = image.split(':', 1) if ':' in image else (image, None)
     with DockerRegistry(
             registry,
             auth=(opts.username, opts.password) if opts.username else None,
@@ -352,9 +355,6 @@ def main():
             headers={'User-Agent': "regview/" + __version__},
             verify=opts.cacert if opts.cacert else not opts.insecure,
             debug=opts.debug) as reg:
-        glob_repo, glob_tag = None, None
-        if '@' not in image and re.search(r"\*|\?|\[", image):
-            glob_repo, glob_tag = image.split(':', 1) if ':' in image else (image, None)
         if image and not glob_repo:
             sep = '@' if '@' in image else ':'
             print_fullinfo(reg, *image.split(sep, 1))
