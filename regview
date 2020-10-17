@@ -197,8 +197,8 @@ def get_info(reg, repo, tag):
         return None
     info = {
         'CompressedSize': sum([_['size'] for _ in manifest['layers']]),
-        'Digest': manifest['config']['digest'],
-        'ID': manifest['docker-content-digest']}
+        'Digest': manifest['docker-content-digest'],
+        'ID': manifest['config']['digest']}
     if opts.verbose:
         blob = reg.get_blob(repo, manifest['config']['digest'])
         info.update(blob.json())
