@@ -196,22 +196,6 @@ def get_info(reg, repo, tag):
     return info
 
 
-def get_infox(manifest):
-    """
-    Get info from manifest schemaVersion 1
-    """
-    data = json.loads(manifest['history'][0]['v1Compatibility'])
-    keys = ('architecture', 'created', 'docker_version', 'os')
-    info = {key: data[key] for key in keys if data.get(key)}
-    keys = (
-        'Cmd', 'Entrypoint', 'Env', 'ExposedPorts',
-        'Healthcheck', 'Labels', 'OnBuild', 'Shell',
-        'StopSignal', 'User', 'Volumes', 'WorkingDir'
-    )
-    info.update({key: data['config'][key] for key in keys if data['config'].get(key)})
-    return info
-
-
 def pretty_size(size):
     """
     Converts a size in bytes to a string in KB, MB, GB or TB
@@ -277,44 +261,6 @@ def print_fullinfo(reg, repo, tag="latest"):
         print("%-20s\t%s" % (key, value))
     if opts.verbose > 1:
         print_history(info['history'])
-
-
-def print_fullinfox(reg, repo, tag="latest"):
-    """
-    Print full info about image
-    """
-    manifest_v1 = None
-    fat_manifest = None
-
-    # Get fat manifest
-    if not tag.startswith("sha256:"):
-        fat_manifest = reg.get_manifest(repo, tag, fat=True)
-        if fat_manifest and 'manifests' in fat_manifest:
-            print_fat_manifest(reg, repo, fat_manifest)
-            return
-
-    # Docker distribution may send a v1 when asked for a fat v2 that doesn't exist
-    if fat_manifest and fat_manifest['schemaVersion'] == 1:
-        manifest_v1 = fat_manifest
-
-    # Single manifest
-    manifest = reg.get_manifest(repo, tag)
-    if not manifest:
-        sys.exit(1)
-    info = {}
-    if not tag.startswith("sha256:"):
-        if not manifest_v1:
-            manifest_v1 = reg.get_manifest(repo, tag, version=1)
-        if manifest_v1:
-            info.update(get_infox(manifest_v1))
-            info['created'] = pretty_date(info['created'])
-    info['ID'] = manifest['docker-content-digest']
-    info['Digest'] = manifest['config']['digest']
-    info['CompressedSize'] = pretty_size(sum([_['size'] for _ in manifest['layers']]))
-    for key, value in info.items():
-        print("%-20s\t%s" % (key, value))
-    if opts.verbose and manifest_v1:
-        print_history(manifest_v1)
 
 
 def print_history(history):
