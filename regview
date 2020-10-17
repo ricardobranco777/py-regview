@@ -185,7 +185,7 @@ class DockerRegistry:
         if got.status_code != requests.codes.OK:  # pylint: disable=no-member
             logging.error("%s@%s", repo, digest)
             return None
-        return got.json()
+        return got
 
 
 def get_info(reg, repo, tag):
@@ -193,15 +193,16 @@ def get_info(reg, repo, tag):
     Get info from manifest v2 and digest blob
     """
     manifest = reg.get_manifest(repo, tag)
-    if manifest:
-        info = reg.get_blob(repo, manifest['config']['digest'])
-        if info:
-            info.update({
-                'CompressedSize': sum([_['size'] for _ in manifest['layers']]),
-                'Digest': manifest['config']['digest'],
-                'ID': manifest['docker-content-digest']})
-            return info
-    return None
+    if not manifest:
+        return None
+    info = {
+        'CompressedSize': sum([_['size'] for _ in manifest['layers']]),
+        'Digest': manifest['config']['digest'],
+        'ID': manifest['docker-content-digest']}
+    if opts.verbose:
+        blob = reg.get_blob(repo, manifest['config']['digest'])
+        info.update(blob.json())
+    return info
 
 
 def get_infox(manifest):
@@ -279,7 +280,8 @@ def print_fullinfo(reg, repo, tag="latest"):
         'Cmd', 'Entrypoint', 'Env', 'ExposedPorts',
         'Healthcheck', 'Labels', 'OnBuild', 'Shell',
         'StopSignal', 'User', 'Volumes', 'WorkingDir')
-    data.update({k: v for k, v in info['config'].items() if k in keys and v})
+    if opts.verbose:
+        data.update({k: v for k, v in info['config'].items() if k in keys and v})
     for key, value in sorted(data.items()):
         print("%-20s\t%s" % (key, value))
     if opts.verbose:
