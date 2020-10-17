@@ -292,7 +292,12 @@ def print_info(reg, repo, tag, fmt):
     docker_id = info['ID']
     if not opts.no_trunc:
         docker_id = docker_id[len("sha256:"):len("sha256:") + 12]
-    print(fmt % (f"{repo} {tag}", info['Digest'], docker_id))
+    values = [f"{repo}:{tag}", docker_id]
+    if opts.digests:
+        values.insert(1, info['Digest'])
+    if opts.verbose:
+        values.append(pretty_date(info['created']))
+    print(fmt % tuple(values))
 
 
 def get_images(reg, repos, pattern_tag=None):
@@ -321,6 +326,9 @@ def parse_opts():
         '--debug', action='store_true',
         help="Enable debug")
     parser.add_argument(
+        '--digests', action='store_true', default=False,
+        help="Show digests")
+    parser.add_argument(
         '--insecure', action='store_true',
         help="Allow insecure server connections")
     parser.add_argument(
@@ -348,6 +356,11 @@ def main():
     glob_repo, glob_tag = None, None
     if '@' not in image and re.search(r"\*|\?|\[", image):
         glob_repo, glob_tag = image.split(':', 1) if ':' in image else (image, None)
+    keys = ["REPOSITORY:TAG", "IMAGE ID"]
+    if opts.digests:
+        keys.insert(1, "DIGEST")
+    if opts.verbose:
+        keys.append("CREATED ON")
     with DockerRegistry(
             registry,
             auth=(opts.username, opts.password) if opts.username else None,
@@ -362,10 +375,16 @@ def main():
         repos = reg.get_repos(glob_repo)
         if not repos:
             sys.exit(1)
-        # repo_width = max(len(repo) for repo in repos)
-        image_width = int(get_terminal_size().columns / 2)
-        fmt = "%-{}s %-72s %s".format(image_width)
-        print(fmt % ("REPOSITORY TAG", "DIGEST", "ID"))
+        image_width = min(
+            int(get_terminal_size().columns / 2),
+            max(len(repo) for repo in repos) + 20)
+        fmt = f"%-{image_width}s"
+        if opts.digests:
+            fmt += "  %-72s"
+        fmt += "  %-72s" if opts.no_trunc else "  %-12s"
+        if opts.verbose:
+            fmt += "  %s"
+        print(fmt % tuple(keys))
         for repo, tags in get_images(reg, repos, glob_tag):
             for tag in tags:
                 print_info(reg, repo, tag, fmt)
