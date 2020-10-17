@@ -166,7 +166,8 @@ class DockerRegistry:
         got = self.session.get(url, headers={"Accept": content_type})
         if got.status_code != requests.codes.OK:  # pylint: disable=no-member
             if version != 1:
-                logging.error("%s:%s: %s", repo, tag, got.reason)
+                fmt = "%s@%s: %s" if tag.startswith("sha256:") else "%s:%s:%s"
+                logging.error(fmt, repo, tag, got.reason)
             return None
         manifest = got.json()
         # Docker distribution may send a v1 when asked for a fat v2 that doesn't exist
