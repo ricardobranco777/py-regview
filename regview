@@ -284,7 +284,7 @@ def print_fullinfo(reg, repo, tag="latest"):
         data.update({k: v for k, v in info['config'].items() if k in keys and v})
     for key, value in sorted(data.items()):
         print("%-20s\t%s" % (key, value))
-    if opts.verbose:
+    if opts.verbose > 1:
         print_history(info['history'])
 
 
@@ -396,8 +396,8 @@ def parse_opts():
         '-p', '--password',
         help="Password for authentication")
     parser.add_argument(
-        '-v', '--verbose', action='store_true',
-        help="Print image history if available")
+        '-v', '--verbose', action='count', default=0,
+        help="Be verbose. May be specified multiple times")
     parser.add_argument('image')
     return parser.parse_args()
 
