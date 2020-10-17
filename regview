@@ -177,8 +177,33 @@ class DockerRegistry:
             manifest['docker-content-digest'] = got.headers['docker-content-digest']
         return manifest
 
+    def get_blob(self, repo, digest):
+        """
+        Get blob
+        """
+        got = self.session.get(f"{self.registry}/v2/{repo}/blobs/{digest}")
+        if got.status_code != requests.codes.OK:  # pylint: disable=no-member
+            logging.error("%s@%s", repo, digest)
+            return None
+        return got.json()
 
-def get_info(manifest):
+
+def get_info(reg, repo, tag):
+    """
+    Get info from manifest v2 and digest blob
+    """
+    manifest = reg.get_manifest(repo, tag)
+    if manifest:
+        info = reg.get_blob(repo, manifest['config']['digest'])
+        if info:
+            info.update({
+                'ID': manifest['docker-content-digest'],
+                'Digest': manifest['config']['digest']})
+            return info
+    return None
+
+
+def get_infox(manifest):
     """
     Get info from manifest schemaVersion 1
     """
@@ -262,7 +287,7 @@ def print_fullinfo(reg, repo, tag="latest"):
         if not manifest_v1:
             manifest_v1 = reg.get_manifest(repo, tag, version=1)
         if manifest_v1:
-            info.update(get_info(manifest_v1))
+            info.update(get_infox(manifest_v1))
             info['created'] = pretty_date(info['created'])
     info['ID'] = manifest['docker-content-digest']
     info['Digest'] = manifest['config']['digest']
@@ -288,14 +313,13 @@ def print_info(reg, repo, tag, fmt):
     """
     Print full info about image
     """
-    manifest = reg.get_manifest(repo, tag)
-    if not manifest:
+    info = get_info(reg, repo, tag)
+    if info is None:
         return
-    # info = get_info(reg.get_manifest(repo, tag, version=1))
-    docker_id, digest = manifest['config']['digest'], manifest['docker-content-digest']
+    docker_id = info['ID']
     if not opts.no_trunc:
         docker_id = docker_id[len("sha256:"):len("sha256:") + 12]
-    print(fmt % (f"{repo} {tag}", digest, docker_id))
+    print(fmt % (f"{repo} {tag}", info['Digest'], docker_id))
 
 
 def get_images(reg, repos, pattern_tag=None):
