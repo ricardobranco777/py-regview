@@ -248,17 +248,17 @@ def print_fullinfo(reg, repo, tag="latest"):
         info['created'] = pretty_date(info['created'])
     info['CompressedSize'] = pretty_size(info['CompressedSize'])
     keys = (
-        'architecture', 'created', 'docker_version', 'os',
+        'architecture', 'author', 'created', 'docker_version', 'os',
         'CompressedSize', 'ID', 'Digest')
-    data = {k: v for k, v in info.items() if k in keys and v}
+    data = {key: info[key] for key in keys if info.get(key)}
     keys = (
         'Cmd', 'Entrypoint', 'Env', 'ExposedPorts',
         'Healthcheck', 'Labels', 'OnBuild', 'Shell',
         'StopSignal', 'User', 'Volumes', 'WorkingDir')
     if opts.verbose:
-        data.update({k: v for k, v in info['config'].items() if k in keys and v})
-    for key, value in sorted(data.items()):
-        print("%-20s\t%s" % (key, value))
+        data.update({key: info['config'][key] for key in keys if info['config'].get(key)})
+    for key in sorted(data, key=str.casefold):
+        print("%-20s\t%s" % (key, data[key]))
     if opts.verbose > 1:
         print_history(info['history'])
 
