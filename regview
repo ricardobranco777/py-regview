@@ -30,8 +30,6 @@ class DockerRegistry:
     """
     Class to implement Docker Registry methods
     """
-    _supports_schema_v1 = None
-
     def __init__(self, registry, auth=None, cert=None, headers=None, verify=True, debug=False):  # pylint: disable=too-many-arguments
         self.session = requests.Session()
         logging.basicConfig(format='%(levelname)s: %(message)s')
@@ -152,28 +150,21 @@ class DockerRegistry:
             tags = fnmatch.filter(tags, pattern)
         return repo, tags
 
-    def get_manifest(self, repo, tag, version=2, fat=False):
+    def get_manifest(self, repo, tag, fat=False):
         """
         Get the manifest
         """
-        if version == 1 and self._supports_schema_v1 is False:
-            return None
         url = f"{self.registry}/v2/{repo}/manifests/{tag}"
+        content_type = "application/vnd.docker.distribution.manifest.v2+json"
         if fat:
             content_type = "application/vnd.docker.distribution.manifest.list.v2+json"
-        else:
-            content_type = f"application/vnd.docker.distribution.manifest.v{version}+json"
         got = self.session.get(url, headers={"Accept": content_type})
         if got.status_code != requests.codes.OK:  # pylint: disable=no-member
-            if version != 1:
-                fmt = "%s@%s: %s" if tag.startswith("sha256:") else "%s:%s:%s"
-                logging.error(fmt, repo, tag, got.reason)
+            fmt = "%s@%s: %s" if tag.startswith("sha256:") else "%s:%s:%s"
+            logging.error(fmt, repo, tag, got.reason)
             return None
         manifest = got.json()
-        # Docker distribution may send a v1 when asked for a fat v2 that doesn't exist
-        if manifest['schemaVersion'] == 1 and self._supports_schema_v1 is None:
-            self._supports_schema_v1 = manifest['schemaVersion'] == 1
-        elif got.headers['content-type'] == "application/vnd.docker.distribution.manifest.v2+json":
+        if got.headers['content-type'] == "application/vnd.docker.distribution.manifest.v2+json":
             manifest['docker-content-digest'] = got.headers['docker-content-digest']
         return manifest
 
