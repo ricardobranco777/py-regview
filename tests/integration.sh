@@ -38,9 +38,9 @@ digest=$(sudo docker images --digests --format="{{.Digest}}" localhost:$port/$im
 test_proto () {
 	proto="$1"
 
-	# Test proto
-	regview $options localhost:$port | grep -q $image
-	regview $options $proto://localhost:$port | grep -q $image
+	# Test listing
+	regview $options --digests localhost:$port | grep -q $digest
+	regview $options --digests $proto://localhost:$port | grep -q $digest
 
 	# Test image
 	regview $options localhost:$port/$image:latest | grep -q $digest
@@ -51,10 +51,10 @@ test_proto () {
 	regview $options $proto://localhost:$port/$image@$digest | grep -q $digest
 
 	# Test glob in repository and tag
-	regview $options localhost:$port/${image:0:2}* | grep -q $digest
-	regview $options localhost:$port/${image:0:2}*:late* | grep -q $digest
-	regview $options localhost:$port/${image:0:2}*:latest | grep -q $digest
-	regview $options localhost:$port/$image:late* | grep -q $digest
+	regview $options --digests localhost:$port/${image:0:2}* | grep -q $digest
+	regview $options --digests localhost:$port/${image:0:2}*:late* | grep -q $digest
+	regview $options --digests localhost:$port/${image:0:2}*:latest | grep -q $digest
+	regview $options --digests localhost:$port/$image:late* | grep -q $digest
 }
 
 echo "Testing HTTP"
