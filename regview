@@ -37,8 +37,6 @@ class DockerRegistry:
             self._enable_debug()
         if not auth:
             auth = self._get_creds(registry)
-        elif len(auth) < 2:
-            auth = (auth[0], getpass("Password: "))
         self.session.auth = auth
         self.session.cert = cert
         if headers:
@@ -351,6 +349,8 @@ def main():
     """
     Main function
     """
+    if opts.username and not opts.password:
+        opts.password = getpass("Password: ")
     match = re.search(r'^((?:https?://)?[^:/]+(?::[0-9]+)?)/*(.*)', opts.image)
     registry, image = match.group(1), match.group(2)
     glob_repo, glob_tag = None, None
