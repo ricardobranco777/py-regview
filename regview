@@ -32,6 +32,8 @@ class DockerRegistry:
     """
     def __init__(self, registry, auth=None, cert=None, headers=None, verify=True, debug=False):  # pylint: disable=too-many-arguments
         self.session = requests.Session()
+        self.session.mount("http://", requests.adapters.HTTPAdapter(pool_maxsize=100))
+        self.session.mount("https://", requests.adapters.HTTPAdapter(pool_maxsize=100))
         logging.basicConfig(format='%(levelname)s: %(message)s')
         if debug:
             self._enable_debug()
