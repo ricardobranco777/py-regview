@@ -277,17 +277,6 @@ def print_history(history):
         print(f"History[{i}]\t\t{item['created_by']}")
 
 
-def print_historyx(manifest):
-    """
-    Print history
-    """
-    lines = [
-        " ".join(json.loads(item['v1Compatibility'])['container_config']['Cmd'])
-        for item in reversed(manifest['history'])]
-    for i, line in enumerate(lines):
-        print(f"History[{i}]\t\t{line}")
-
-
 def print_info(reg, repo, tag, fmt):
     """
     Print full info about image
