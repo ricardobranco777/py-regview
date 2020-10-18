@@ -226,6 +226,12 @@ def print_fat(reg, repo, tag="latest"):
     Print fat manifest
     """
     fat_manifest = reg.get_manifest(repo, tag, fat=True)
+    if fat_manifest is None:
+        sys.exit(1)
+    elif fat_manifest['schemaVersion'] == 1:
+        # Docker distribution may send a v1 when asked for a fat v2 that doesn't exist
+        print_fullinfo(reg, repo, tag)
+        return
     for item in fat_manifest['manifests']:
         manifest = reg.get_manifest(repo, item['digest'])
         if not manifest:
