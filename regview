@@ -221,10 +221,11 @@ def pretty_date(string):
     return utc_date.astimezone().strftime("%a %b %d %H:%M:%S %Z %Y")
 
 
-def print_fat_manifest(reg, repo, fat_manifest):
+def print_fat(reg, repo, tag="latest"):
     """
     Print fat manifest
     """
+    fat_manifest = reg.get_manifest(repo, tag, fat=True)
     for item in fat_manifest['manifests']:
         manifest = reg.get_manifest(repo, item['digest'])
         if not manifest:
@@ -319,6 +320,9 @@ def parse_opts():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        '-a', '--all', action='store_true',
+        help="Print information for all architectures")
+    parser.add_argument(
         '-c', '--cert',
         help="Client certificate filename (may contain unencrypted key)")
     parser.add_argument(
@@ -331,7 +335,7 @@ def parse_opts():
         '--debug', action='store_true',
         help="Enable debug")
     parser.add_argument(
-        '--digests', action='store_true', default=False,
+        '--digests', action='store_true',
         help="Show digests")
     parser.add_argument(
         '--insecure', action='store_true',
@@ -377,7 +381,10 @@ def main():
             debug=opts.debug) as reg:
         if image and not glob_repo:
             sep = '@' if '@' in image else ':'
-            print_fullinfo(reg, *image.split(sep, 1))
+            if opts.all and sep != '@':
+                print_fat(reg, *image.split(sep, 1))
+            else:
+                print_fullinfo(reg, *image.split(sep, 1))
             return
         repos = reg.get_repos(glob_repo)
         if not repos:

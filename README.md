@@ -9,6 +9,7 @@ View the contents of a Docker Registry v2
 ```
 regview [-h] [--insecure] [--no-trunc] [-u USERNAME] [-p PASSWORD] REGISTRY|IMAGE
   -h, --help            show this help message and exit
+  -a, --all             Print information for all architectures
   -c CERT, --cert CERT  Client certificate filename (may contain unencrypted key)
   -k KEY, --key KEY     Client private key filename (unencrypted)
   -C CACERT, --cacert CACERT
