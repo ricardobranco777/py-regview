@@ -44,7 +44,26 @@ class DockerRegistry:
         if headers:
             self.session.headers.update(headers)
         self.session.verify = verify
-        # Check if registry starts with a scheme and adjust accordingly
+        self._fix_registry(registry)
+        disable_warnings()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.session.close()
+
+    def _enable_debug(self):
+        logging.getLogger().setLevel(logging.DEBUG)
+        requests_log = logging.getLogger("urllib3")
+        requests_log.setLevel(logging.DEBUG)
+        requests_log.propagate = True
+        self.session.hooks['response'].append(self._print_response)
+
+    def _fix_registry(self, registry):
+        """
+        Check if registry starts with a scheme and adjust accordingly
+        """
         if registry.startswith(("http://", "https://")):
             try:
                 got = self.session.get(f"{registry}/v2/")
@@ -66,20 +85,6 @@ class DockerRegistry:
         if got.headers.get('docker-distribution-api-version') != 'registry/2.0':
             logging.error("Invalid registry: %s", registry)
             sys.exit(1)
-        disable_warnings()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.session.close()
-
-    def _enable_debug(self):
-        logging.getLogger().setLevel(logging.DEBUG)
-        requests_log = logging.getLogger("urllib3")
-        requests_log.setLevel(logging.DEBUG)
-        requests_log.propagate = True
-        self.session.hooks['response'].append(self._print_response)
 
     @staticmethod
     def _get_creds(registry):
