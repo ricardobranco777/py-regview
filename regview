@@ -169,7 +169,7 @@ class DockerRegistry:
             logging.error(fmt, repo, tag, got.reason)
             return None
         manifest = got.json()
-        if got.headers['content-type'] == "application/vnd.docker.distribution.manifest.v2+json":
+        if not fat:
             manifest['docker-content-digest'] = got.headers['docker-content-digest']
         return manifest
 
