@@ -357,7 +357,7 @@ def main():
     """
     if opts.username and not opts.password:
         opts.password = getpass("Password: ")
-    match = re.search(r'^((?:https?://)?[^:/]+(?::[0-9]+)?)/*(.*)', opts.image)
+    match = re.match(r'((?:https?://)?[^:/]+(?::[0-9]+)?)/*(.*)', opts.image)
     registry, image = match.group(1), match.group(2)
     glob_repo, glob_tag = None, None
     if '@' not in image and re.search(r"\*|\?|\[", image):
