@@ -283,11 +283,10 @@ def print_history(history):
         print(f"History[{i}]\t\t{item['created_by']}")
 
 
-def print_info(reg, repo, tag, fmt):
+def print_info(repo, tag, info, fmt):
     """
     Print full info about image
     """
-    info = get_info(reg, repo, tag)
     if info is None:
         return
     docker_id = info['ID']
@@ -305,8 +304,39 @@ def get_images(reg, repos, pattern_tag=None):
     """
     Get images"
     """
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor(max_workers=2) as executor:
         yield from executor.map(lambda r: reg.get_tags(r, pattern_tag), repos)
+
+
+def print_all(reg, glob_repo, glob_tag):
+    """
+    Print all
+    """
+    repos = reg.get_repos(glob_repo)
+    keys = ["REPOSITORY:TAG", "IMAGE ID"]
+    if opts.digests:
+        keys.insert(1, "DIGEST")
+    if opts.verbose:
+        keys.append("CREATED ON")
+    image_width = min(
+        int(get_terminal_size().columns / 2),
+        max(len(repo) for repo in repos) + 20)
+    fmt = f"%-{image_width}s"
+    if opts.digests:
+        fmt += "  %-72s"
+    fmt += "  %-72s" if opts.no_trunc else "  %-12s"
+    if opts.verbose:
+        fmt += "  %s"
+    print(fmt % tuple(keys))
+    if not repos:
+        sys.exit(1)
+    with ThreadPoolExecutor() as executor:
+        for repo, tags in get_images(reg, repos, glob_tag):
+            if tags is None:
+                continue
+            infos = executor.map(lambda t: get_info(reg, repo, t), tags)  # pylint: disable=cell-var-from-loop
+            for tag, info in zip(tags, infos):
+                print_info(repo, tag, info, fmt)
 
 
 def parse_opts():
@@ -362,11 +392,6 @@ def main():
     glob_repo, glob_tag = None, None
     if '@' not in image and re.search(r"\*|\?|\[", image):
         glob_repo, glob_tag = image.split(':', 1) if ':' in image else (image, None)
-    keys = ["REPOSITORY:TAG", "IMAGE ID"]
-    if opts.digests:
-        keys.insert(1, "DIGEST")
-    if opts.verbose:
-        keys.append("CREATED ON")
     with DockerRegistry(
             registry,
             auth=(opts.username, opts.password) if opts.username else None,
@@ -381,24 +406,7 @@ def main():
             else:
                 print_fullinfo(reg, *image.split(sep, 1))
             return
-        repos = reg.get_repos(glob_repo)
-        if not repos:
-            sys.exit(1)
-        image_width = min(
-            int(get_terminal_size().columns / 2),
-            max(len(repo) for repo in repos) + 20)
-        fmt = f"%-{image_width}s"
-        if opts.digests:
-            fmt += "  %-72s"
-        fmt += "  %-72s" if opts.no_trunc else "  %-12s"
-        if opts.verbose:
-            fmt += "  %s"
-        print(fmt % tuple(keys))
-        for repo, tags in get_images(reg, repos, glob_tag):
-            if tags is None:
-                continue
-            for tag in tags:
-                print_info(reg, repo, tag, fmt)
+        print_all(reg, glob_repo, glob_tag)
 
 
 if __name__ == "__main__":
