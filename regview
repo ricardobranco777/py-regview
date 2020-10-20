@@ -395,6 +395,8 @@ def main():
             fmt += "  %s"
         print(fmt % tuple(keys))
         for repo, tags in get_images(reg, repos, glob_tag):
+            if tags is None:
+                continue
             for tag in tags:
                 print_info(reg, repo, tag, fmt)
 
