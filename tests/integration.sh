@@ -4,7 +4,7 @@ set -xeE
 
 port=$RANDOM
 name=registry$port
-image=regview_test
+image=regview
 certs="$PWD/tests/certs"
 
 cleanup () {
@@ -17,7 +17,10 @@ cleanup () {
 
 trap "cleanup ; exit 1" ERR
 
-sudo docker build -t $image tests/docker
+python_version=$(python3 --version | cut -d. -f2)
+sed -i "s/3\.9/3.$python_version/" Dockerfile
+
+sudo docker build -t $image .
 
 sudo docker run -d \
 	--net=host \
@@ -39,27 +42,35 @@ test_proto () {
 	proto="$1"
 
 	# Test listing
-	regview $options --digests localhost:$port | grep -q $digest
-	regview $options --digests $proto://localhost:$port | grep -q $digest
+	$docker regview $options --digests localhost:$port | grep -q $digest
+	$docker regview $options --digests $proto://localhost:$port | grep -q $digest
 
 	# Test image
-	regview $options localhost:$port/$image:latest | grep -q $digest
-	regview $options $proto://localhost:$port/$image:latest | grep -q $digest
+	$docker regview $options localhost:$port/$image:latest | grep -q $digest
+	$docker regview $options $proto://localhost:$port/$image:latest | grep -q $digest
 
 	# Test digest
-	regview $options localhost:$port/$image@$digest | grep -q $digest
-	regview $options $proto://localhost:$port/$image@$digest | grep -q $digest
+	$docker regview $options localhost:$port/$image@$digest | grep -q $digest
+	$docker regview $options $proto://localhost:$port/$image@$digest | grep -q $digest
 
 	# Test glob in repository and tag
-	regview $options --digests localhost:$port/${image:0:2}* | grep -q $digest
-	regview $options --digests localhost:$port/${image:0:2}*:late* | grep -q $digest
-	regview $options --digests localhost:$port/${image:0:2}*:latest | grep -q $digest
-	regview $options --digests localhost:$port/$image:late* | grep -q $digest
+	$docker regview $options --digests localhost:$port/${image:0:2}* | grep -q $digest
+	$docker regview $options --digests localhost:$port/${image:0:2}*:late* | grep -q $digest
+	$docker regview $options --digests localhost:$port/${image:0:2}*:latest | grep -q $digest
+	$docker regview $options --digests localhost:$port/$image:late* | grep -q $digest
 }
 
 echo "Testing HTTP"
 
 test_proto http
+
+echo "Testing HTTP using Docker image"
+
+docker="docker run --rm --net=host"
+
+test_proto http
+
+unset docker docker_options
 
 sudo docker rm -vf $name
 
@@ -92,6 +103,12 @@ echo "Testing HTTPS with Basic Auth with username & password specified"
 
 options="$options -u testuser -p testpassword"
 
+test_proto https
+
+echo "Testing HTTPS with Basic Auth with username & password specified using Docker image"
+
+docker="docker run --rm --net=host -v $certs:/certs:ro"
+options="-c /certs/client.pem -k /certs/client.key -C /certs/ca.pem -u testuser -p testpassword"
 test_proto https
 
 cleanup
