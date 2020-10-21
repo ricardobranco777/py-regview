@@ -13,6 +13,7 @@ import re
 import sys
 
 from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
 from getpass import getpass
 from shutil import get_terminal_size
 
@@ -173,6 +174,7 @@ class DockerRegistry:
             manifest['docker-content-digest'] = got.headers['docker-content-digest']
         return manifest
 
+    @lru_cache(maxsize=32)
     def get_blob(self, repo, digest):
         """
         Get blob
@@ -195,9 +197,6 @@ def get_info(reg, repo, tag):
         'CompressedSize': sum([_['size'] for _ in manifest['layers']]),
         'Digest': manifest['docker-content-digest'],
         'ID': manifest['config']['digest']}
-    if opts.verbose:
-        blob = reg.get_blob(repo, manifest['config']['digest'])
-        info.update(blob.json())
     return info
 
 
@@ -256,6 +255,7 @@ def print_fullinfo(reg, repo, tag="latest"):
     info = get_info(reg, repo, tag)
     if info is None:
         return
+    info.update(reg.get_blob(repo, info['ID']).json())
     if 'created' in info:
         info['created'] = pretty_date(info['created'])
     info['CompressedSize'] = pretty_size(info['CompressedSize'])
@@ -287,8 +287,6 @@ def print_info(repo, tag, info, fmt):
     """
     Print full info about image
     """
-    if info is None:
-        return
     docker_id = info['ID']
     if not opts.no_trunc:
         docker_id = docker_id[len("sha256:"):len("sha256:") + 12]
@@ -336,7 +334,13 @@ def print_all(reg, glob_repo, glob_tag):
                 continue
             infos = executor.map(lambda t: get_info(reg, repo, t), tags)  # pylint: disable=cell-var-from-loop
             for tag, info in zip(tags, infos):
+                if info is None:
+                    continue
+                if opts.verbose:
+                    info.update(reg.get_blob(repo, info['ID']).json())
                 print_info(repo, tag, info, fmt)
+    if os.environ.get("DEBUG"):
+        print(reg.get_blob.cache_info(), file=sys.stderr)
 
 
 def parse_opts():
