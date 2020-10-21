@@ -13,7 +13,6 @@ import re
 import sys
 
 from concurrent.futures import ThreadPoolExecutor
-from functools import lru_cache
 from getpass import getpass
 from shutil import get_terminal_size
 
@@ -174,7 +173,6 @@ class DockerRegistry:
             manifest['docker-content-digest'] = got.headers['docker-content-digest']
         return manifest
 
-    @lru_cache(maxsize=32)
     def get_blob(self, repo, digest):
         """
         Get blob
@@ -332,15 +330,18 @@ def print_all(reg, glob_repo, glob_tag):
         for repo, tags in get_images(reg, repos, glob_tag):
             if tags is None:
                 continue
-            infos = executor.map(lambda t, r=repo: get_info(reg, r, t), tags)
+            infos = list(executor.map(lambda t, r=repo: get_info(reg, r, t), tags))
+            if opts.verbose:
+                digests = dict(
+                    executor.map(
+                        lambda d, r=repo: (d, reg.get_blob(r, d).json()),
+                        {_['ID'] for _ in infos if _}))
             for tag, info in zip(tags, infos):
                 if info is None:
                     continue
                 if opts.verbose:
-                    info.update(reg.get_blob(repo, info['ID']).json())
+                    info.update(digests[info['ID']])
                 print_info(repo, tag, info, fmt)
-    if os.environ.get("DEBUG"):
-        print(reg.get_blob.cache_info(), file=sys.stderr)
 
 
 def parse_opts():
