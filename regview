@@ -332,7 +332,7 @@ def print_all(reg, glob_repo, glob_tag):
         for repo, tags in get_images(reg, repos, glob_tag):
             if tags is None:
                 continue
-            infos = executor.map(lambda t: get_info(reg, repo, t), tags)  # pylint: disable=cell-var-from-loop
+            infos = executor.map(lambda t, r=repo: get_info(reg, r, t), tags)
             for tag, info in zip(tags, infos):
                 if info is None:
                     continue
