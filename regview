@@ -181,7 +181,7 @@ class DockerRegistry:
         """
         got = self.session.get(f"{self.registry}/v2/{repo}/blobs/{digest}")
         if got.status_code != requests.codes.OK:  # pylint: disable=no-member
-            logging.error("%s@%s", repo, digest)
+            logging.error("%s@%s: %s", repo, digest, got.reason)
             return None
         return got
 
