@@ -165,7 +165,7 @@ class DockerRegistry:
             content_type = "application/vnd.docker.distribution.manifest.list.v2+json"
         got = self.session.get(url, headers={"Accept": content_type})
         if got.status_code != requests.codes.OK:  # pylint: disable=no-member
-            fmt = "%s@%s: %s" if tag.startswith("sha256:") else "%s:%s:%s"
+            fmt = "%s@%s: %s" if tag.startswith("sha256:") else "%s:%s: %s"
             logging.error(fmt, repo, tag, got.reason)
             return None
         manifest = got.json()
