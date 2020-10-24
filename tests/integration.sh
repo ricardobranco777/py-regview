@@ -6,6 +6,10 @@ port=$RANDOM
 name=registry$port
 image=regview
 certs="$PWD/tests/certs"
+user="testuser"
+pass="testpass"
+
+(cd $certs ; pki ; htpasswd -Bbn $user $pass > htpasswd)
 
 cleanup () {
 	set +e
@@ -15,7 +19,7 @@ cleanup () {
 	rm -f $DOCKER_CONFIG/config.json
 }
 
-trap "cleanup ; exit 1" ERR
+#trap "cleanup ; exit 1" ERR
 
 python_version=$(python3 --version | cut -d. -f2)
 sed -i "s/3\.9/3.$python_version/" Dockerfile
@@ -66,7 +70,7 @@ test_proto http
 
 echo "Testing HTTP using Docker image"
 
-docker="docker run --rm --net=host"
+docker="sudo docker run --rm --net=host"
 
 test_proto http
 
@@ -84,31 +88,34 @@ sudo docker run -d \
 	-e REGISTRY_AUTH_HTPASSWD_PATH=/certs/htpasswd \
        	-e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/server.pem \
        	-e REGISTRY_HTTP_TLS_KEY=/certs/server.key \
-       	-e REGISTRY_HTTP_TLS_CLIENTCAS=" - /certs/ca.pem" \
+       	-e REGISTRY_HTTP_TLS_CLIENTCAS=" - /certs/cacerts.pem" \
 	-v /tmp/registry:/var/lib/registry \
 	-v $certs:/certs \
 	registry:2
 
 sleep 5
 
+echo "Testing HTTPS with Basic Auth with username & password specified"
+
+options="-c $certs/client.pem -k $certs/client.key -C $certs/cacerts.pem"
+options="$options -u $user -p $pass"
+
+test_proto https
+
 echo "Testing HTTPS with Basic Auth getting credentials from config.json"
 
 export DOCKER_CONFIG="$PWD/tests"
-echo '{"auths": {"https://localhost:'$port'": {"auth": "dGVzdHVzZXI6dGVzdHBhc3N3b3Jk"}}}' > $DOCKER_CONFIG/config.json
-options="-c $certs/client.pem -k $certs/client.key -C $certs/ca.pem"
+cat > $DOCKER_CONFIG/config.json <<- EOF
+	{"auths": {"https://localhost:$port": {"auth": "$(echo -n $user:$pass | base64)"}}}
+EOF
+options="-c $certs/client.pem -k $certs/client.key -C $certs/cacerts.pem"
 test_proto https
 unset DOCKER_CONFIG
-
-echo "Testing HTTPS with Basic Auth with username & password specified"
-
-options="$options -u testuser -p testpassword"
-
-test_proto https
 
 echo "Testing HTTPS with Basic Auth with username & password specified using Docker image"
 
 docker="docker run --rm --net=host -v $certs:/certs:ro"
-options="-c /certs/client.pem -k /certs/client.key -C /certs/ca.pem -u testuser -p testpassword"
+options="-c /certs/client.pem -k /certs/client.key -C /certs/cacerts.pem -u $user -p $pass"
 test_proto https
 
 cleanup
