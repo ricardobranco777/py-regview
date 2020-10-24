@@ -9,7 +9,7 @@ certs="$PWD/tests/certs"
 user="testuser"
 pass="testpass"
 
-(cd $certs ; pki ; htpasswd -Bbn $user $pass > htpasswd)
+(cd $certs ; simplepki ; htpasswd -Bbn $user $pass > htpasswd)
 
 cleanup () {
 	set +e
