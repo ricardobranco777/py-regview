@@ -13,6 +13,7 @@ import re
 import sys
 
 from concurrent.futures import ThreadPoolExecutor
+from datetime import timezone
 from getpass import getpass
 from shutil import get_terminal_size
 
@@ -66,19 +67,19 @@ class DockerRegistry:
         """
         if registry.startswith(("http://", "https://")):
             try:
-                got = self.session.get(f"{registry}/v2/")
+                got = self.session.get(registry + "/v2/")
             except RequestException as err:
                 logging.error("%s", err)
                 sys.exit(1)
             self.registry = registry
         else:
             try:
-                got = self.session.get(f"https://{registry}/v2/")
-                self.registry = f"https://{registry}"
+                got = self.session.get("https://%s/v2/" % registry)
+                self.registry = "https://" + registry
             except RequestException:
                 try:
-                    got = self.session.get(f"http://{registry}/v2/")
-                    self.registry = f"http://{registry}"
+                    got = self.session.get("http://%s/v2/" % registry)
+                    self.registry = "http://" + registry
                 except RequestException as err:
                     logging.error("%s", err)
                     sys.exit(1)
@@ -100,7 +101,7 @@ class DockerRegistry:
         except OSError:
             return None
         registry = re.sub("^https?://", "", registry)
-        for try_registry in (f"https://{registry}", f"http://{registry}", registry):
+        for try_registry in ("https://" + registry, "http://" + registry, registry):
             try:
                 auth = config['auths'][try_registry]['auth']
                 return tuple(base64.b64decode(auth).decode('utf-8').split(':', 1))
@@ -132,7 +133,7 @@ class DockerRegistry:
             if 'Link' in got.headers:
                 url = requests.utils.parse_header_links(got.headers['Link'])[0]['url']
                 if url.startswith("/v2/"):
-                    url = f"{self.registry}{url}"
+                    url = self.registry + url
             else:
                 break
         return items
@@ -141,7 +142,7 @@ class DockerRegistry:
         """
         Get repositories and return a dict of dicts with the repos as keys
         """
-        repos = self._get_paginated(f"{self.registry}/v2/_catalog", "repositories")
+        repos = self._get_paginated(self.registry + "/v2/_catalog", "repositories")
         if repos and pattern:
             return fnmatch.filter(repos, pattern)
         return repos
@@ -150,7 +151,7 @@ class DockerRegistry:
         """
         Get tags for specified repo
         """
-        tags = self._get_paginated(f"{self.registry}/v2/{repo}/tags/list", "tags")
+        tags = self._get_paginated("%s/v2/%s/tags/list" % (self.registry, repo), "tags")
         if tags and pattern:
             tags = fnmatch.filter(tags, pattern)
         return repo, tags
@@ -159,7 +160,7 @@ class DockerRegistry:
         """
         Get the manifest
         """
-        url = f"{self.registry}/v2/{repo}/manifests/{tag}"
+        url = "%s/v2/%s/manifests/%s" % (self.registry, repo, tag)
         content_type = "application/vnd.docker.distribution.manifest.v2+json"
         if fat:
             content_type = "application/vnd.docker.distribution.manifest.list.v2+json"
@@ -177,7 +178,7 @@ class DockerRegistry:
         """
         Get blob
         """
-        got = self.session.get(f"{self.registry}/v2/{repo}/blobs/{digest}")
+        got = self.session.get("%s/v2/%s/blobs/%s" % (self.registry, repo, digest))
         if got.status_code != requests.codes.OK:  # pylint: disable=no-member
             logging.error("%s@%s: %s", repo, digest, got.reason)
             return None
@@ -218,7 +219,7 @@ def pretty_date(string):
     if opts.raw:
         return string
     # utc_date = datetime.fromisoformat(re.sub(r"\.\d+Z$", "+00:00", string))  # Python 3.7+ only
-    utc_date = dateutil.parser.isoparse(string).replace(tzinfo=None)
+    utc_date = dateutil.parser.isoparse(string).replace(tzinfo=timezone.utc)
     return utc_date.astimezone().strftime("%a %b %d %H:%M:%S %Z %Y")
 
 
@@ -276,7 +277,7 @@ def print_history(history):
     Print history
     """
     for i, item in enumerate(history):
-        print(f"History[{i}]\t\t{item['created_by']}")
+        print("History[{%d}]\t\t%s" % (i, item['created_by']))
 
 
 def print_info(repo, tag, info, fmt):
@@ -286,7 +287,7 @@ def print_info(repo, tag, info, fmt):
     docker_id = info['ID']
     if not opts.no_trunc:
         docker_id = docker_id[len("sha256:"):len("sha256:") + 12]
-    values = [f"{repo}:{tag}", docker_id]
+    values = ["%s:%s" % (repo, tag), docker_id]
     if opts.digests:
         values.insert(1, info['Digest'])
     if opts.verbose:
@@ -315,7 +316,7 @@ def print_all(reg, glob_repo, glob_tag):
     image_width = min(
         int(get_terminal_size().columns / 2),
         max(len(repo) for repo in repos) + 20)
-    fmt = f"%-{image_width}s"
+    fmt = "%%-%ds" % image_width
     if opts.digests:
         fmt += "  %-72s"
     fmt += "  %-72s" if opts.no_trunc else "  %-12s"
