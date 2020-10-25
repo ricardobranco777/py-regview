@@ -17,6 +17,7 @@ regview [-h] [--insecure] [--no-trunc] [-u USERNAME] [-p PASSWORD] REGISTRY|IMAG
   --debug               Enable debug
   --insecure            Allow insecure server connections
   --no-trunc            Don't truncate output
+  --raw                 Raw values for date and size
   -u USERNAME, --username USERNAME
                         Username for authentication
   -p PASSWORD, --password PASSWORD

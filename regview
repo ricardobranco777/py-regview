@@ -202,6 +202,8 @@ def pretty_size(size):
     """
     Converts a size in bytes to a string in KB, MB, GB or TB
     """
+    if opts.raw:
+        return size
     units = (' ', 'K', 'M', 'G', 'T')
     for i in range(4, -1, -1):
         if size > 1024**i:
@@ -213,6 +215,8 @@ def pretty_date(string):
     """
     Converts date/time string in ISO-8601 format to date(1)
     """
+    if opts.raw:
+        return string
     # utc_date = datetime.fromisoformat(re.sub(r"\.\d+Z$", "+00:00", string))  # Python 3.7+ only
     utc_date = dateutil.parser.isoparse(string).replace(tzinfo=None)
     return utc_date.astimezone().strftime("%a %b %d %H:%M:%S %Z %Y")
@@ -367,6 +371,9 @@ def parse_opts():
     parser.add_argument(
         '--no-trunc', action='store_true',
         help="Don't truncate output")
+    parser.add_argument(
+        '--raw', action='store_true',
+        help="Raw values for date and size")
     parser.add_argument(
         '-u', '--username',
         help="Username for authentication")
