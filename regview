@@ -191,10 +191,10 @@ def get_info(reg, repo, tag):
     manifest = reg.get_manifest(repo, tag)
     if not manifest:
         return None
-    info = {
+    info = {'Digest': tag if tag.startswith("sha256:") else manifest['docker-content-digest']}
+    info.update({
         'CompressedSize': sum([_['size'] for _ in manifest['layers']]),
-        'Digest': manifest['docker-content-digest'],
-        'ID': manifest['config']['digest']}
+        'ID': manifest['config']['digest']})
     return info
 
 
@@ -230,13 +230,7 @@ def print_fat(reg, repo, tag="latest"):
         print_fullinfo(reg, repo, tag)
         return
     for item in fat_manifest['manifests']:
-        manifest = reg.get_manifest(repo, item['digest'])
-        if not manifest:
-            sys.exit(1)
-        info = {}
-        info['ID'] = item['digest']
-        info['Digest'] = manifest['config']['digest']
-        info['CompressedSize'] = pretty_size(sum([_['size'] for _ in manifest['layers']]))
+        info = get_info(reg, repo, tag)
         keys = ('architecture', 'os', 'variant')
         info.update({key: item['platform'][key] for key in keys if key in item['platform']})
         keys = ('features', 'os.features')
