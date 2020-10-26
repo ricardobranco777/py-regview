@@ -68,6 +68,7 @@ class DockerRegistry:
         if registry.startswith(("http://", "https://")):
             try:
                 got = self.session.get(registry + "/v2/")
+                got.raise_for_status()
             except RequestException as err:
                 logging.error("%s", err)
                 sys.exit(1)
@@ -75,10 +76,12 @@ class DockerRegistry:
         else:
             try:
                 got = self.session.get("https://%s/v2/" % registry)
+                got.raise_for_status()
                 self.registry = "https://" + registry
             except RequestException:
                 try:
                     got = self.session.get("http://%s/v2/" % registry)
+                    got.raise_for_status()
                     self.registry = "http://" + registry
                 except RequestException as err:
                     logging.error("%s", err)
@@ -125,8 +128,10 @@ class DockerRegistry:
         """
         items = []
         while True:
-            got = self.session.get(url)
-            if got.status_code != requests.codes.OK:  # pylint: disable=no-member
+            try:
+                got = self.session.get(url)
+                got.raise_for_status()
+            except RequestException:
                 logging.error("%s: %s", url, got.reason)
                 return None
             items.extend(got.json()[string])
@@ -164,8 +169,10 @@ class DockerRegistry:
         content_type = "application/vnd.docker.distribution.manifest.v2+json"
         if fat:
             content_type = "application/vnd.docker.distribution.manifest.list.v2+json"
-        got = self.session.get(url, headers={"Accept": content_type})
-        if got.status_code != requests.codes.OK:  # pylint: disable=no-member
+        try:
+            got = self.session.get(url, headers={"Accept": content_type})
+            got.raise_for_status()
+        except RequestException:
             fmt = "%s@%s: %s" if tag.startswith("sha256:") else "%s:%s: %s"
             logging.error(fmt, repo, tag, got.reason)
             return None
@@ -178,8 +185,10 @@ class DockerRegistry:
         """
         Get blob
         """
-        got = self.session.get("%s/v2/%s/blobs/%s" % (self.registry, repo, digest))
-        if got.status_code != requests.codes.OK:  # pylint: disable=no-member
+        try:
+            got = self.session.get("%s/v2/%s/blobs/%s" % (self.registry, repo, digest))
+            got.raise_for_status()
+        except RequestException:
             logging.error("%s@%s: %s", repo, digest, got.reason)
             return None
         return got
@@ -309,7 +318,7 @@ def print_all(reg, glob_repo, glob_tag):
     """
     repos = reg.get_repos(glob_repo)
     if not repos:
-        sys.exit(1)
+        sys.exit(0)
     keys = ["REPOSITORY:TAG", "IMAGE ID"]
     if opts.digests:
         keys.insert(1, "DIGEST")
