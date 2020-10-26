@@ -192,10 +192,10 @@ def get_info(reg, repo, tag):
     manifest = reg.get_manifest(repo, tag)
     if not manifest:
         return None
-    info = {'Digest': tag if tag.startswith("sha256:") else manifest['docker-content-digest']}
-    info.update({
+    info = {
+        'Digest': tag if tag.startswith("sha256:") else manifest['docker-content-digest'],
         'CompressedSize': sum([_['size'] for _ in manifest['layers']]),
-        'ID': manifest['config']['digest']})
+        'ID': manifest['config']['digest']}
     return info
 
 
