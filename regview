@@ -308,6 +308,8 @@ def print_all(reg, glob_repo, glob_tag):
     Print all
     """
     repos = reg.get_repos(glob_repo)
+    if not repos:
+        sys.exit(1)
     keys = ["REPOSITORY:TAG", "IMAGE ID"]
     if opts.digests:
         keys.insert(1, "DIGEST")
