@@ -16,7 +16,8 @@ cleanup () {
 	sudo docker rm -f $name
 	sudo docker rmi $image
 	sudo docker rmi localhost:$port/$image:latest
-	rm -f $DOCKER_CONFIG/config.json
+	rm -f $PWD/tests/config.json
+	rm -rf "$certs"
 }
 
 #trap "cleanup ; exit 1" ERR
@@ -114,7 +115,7 @@ unset DOCKER_CONFIG
 
 echo "Testing HTTPS with Basic Auth with username & password specified using Docker image"
 
-docker="docker run --rm --net=host -v $certs:/certs:ro"
+docker="sudo docker run --rm --net=host -v $certs:/certs:ro"
 options="-c /certs/client.pem -k /certs/client.key -C /certs/cacerts.pem -u $user -p $pass"
 test_proto https
 
