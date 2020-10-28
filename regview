@@ -38,8 +38,7 @@ class DockerRegistry:
         logging.basicConfig(format='%(levelname)s: %(message)s')
         if debug:
             self._enable_debug()
-        if not auth:
-            auth = self._get_creds(registry)
+        auth = auth or self._get_creds(registry)
         self.session.auth = auth
         self.session.cert = cert
         if headers:
@@ -407,7 +406,7 @@ def main():
         opts.password = getpass("Password: ")
     match = re.match(r'((?:https?://)?[^:/]+(?::[0-9]+)?)/*(.*)', opts.image)
     registry, image = match.group(1), match.group(2)
-    glob_repo, glob_tag = None, None
+    glob_repo = glob_tag = None
     if '@' not in image and re.search(r"\*|\?|\[", image):
         glob_repo, glob_tag = image.split(':', 1) if ':' in image else (image, None)
     with DockerRegistryInfo(
