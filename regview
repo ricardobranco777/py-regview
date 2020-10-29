@@ -45,8 +45,6 @@ class GuessAuth2(GuessAuth, _Mixin):  # pylint: disable=too-few-public-methods
     """
     Support Token authentication as specified by https://docs.docker.com/registry/spec/auth/token/
     """
-    _token_cache = {}
-
     def __init__(self, *args, debug=False, headers=None, verify=True, **kwargs):
         super().__init__(*args, **kwargs)
         self.session = requests.Session()
@@ -60,17 +58,14 @@ class GuessAuth2(GuessAuth, _Mixin):  # pylint: disable=too-few-public-methods
         self.session.mount("https://", requests.adapters.HTTPAdapter(pool_maxsize=100))
 
     def _get_token(self, url, params):
-        key = frozenset(params.items())
-        if key not in self._token_cache:
-            try:
-                got = self.session.post(url, params=params)
-                got.raise_for_status()
-            except RequestException as err:
-                logging.error("%s", err)
-                sys.exit(1)
-            data = got.json()
-            self._token_cache[key] = data.get('token', data.get('access_token'))
-        return self._token_cache[key]
+        try:
+            got = self.session.post(url, params=params)
+            got.raise_for_status()
+        except RequestException as err:
+            logging.error("%s", err)
+            sys.exit(1)
+        data = got.json()
+        return data.get('token', data.get('access_token'))
 
     def _handle_token_auth_401(self, req, kwargs):
         params = requests.utils.parse_dict_header(req.headers['www-authenticate'])
