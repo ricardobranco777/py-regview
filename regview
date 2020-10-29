@@ -247,7 +247,7 @@ class DockerRegistry(_Mixin):
         tags = self._get_paginated("%s/v2/%s/tags/list" % (self.registry, repo), "tags")
         if tags and pattern:
             tags = fnmatch.filter(tags, pattern)
-        return repo, tags
+        return tags
 
     def get_manifest(self, repo, tag, fat=False):
         """
@@ -372,7 +372,7 @@ class DockerRegistryInfo(DockerRegistry):
         Get images"
         """
         with ThreadPoolExecutor(max_workers=2) as executor:
-            yield from executor.map(lambda r: self.get_tags(r, pattern_tag), repos)
+            yield from executor.map(lambda r: (r, self.get_tags(r, pattern_tag)), repos)
 
     def print_all(self, glob_repo, glob_tag):
         """
