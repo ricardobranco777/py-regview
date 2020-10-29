@@ -342,7 +342,15 @@ class DockerRegistryInfo(DockerRegistry):
         for key in sorted(data, key=str.casefold):
             print("%-20s\t%s" % (key, data[key]))
         if opts.verbose > 1:
-            print_history(info['history'])
+            self.print_history(info['history'])
+
+    @staticmethod
+    def print_history(history):
+        """
+        Print image history
+        """
+        for i, item in enumerate(history):
+            print("History[{%d}]\t\t%s" % (i, item['created_by']))
 
     @staticmethod
     def print_info(repo, tag, info, fmt):
@@ -430,14 +438,6 @@ def pretty_date(string):
     # utc_date = datetime.fromisoformat(re.sub(r"\.\d+Z$", "+00:00", string))  # Python 3.7+ only
     utc_date = dateutil.parser.isoparse(string).replace(tzinfo=timezone.utc)
     return utc_date.astimezone().strftime("%a %b %d %H:%M:%S %Z %Y")
-
-
-def print_history(history):
-    """
-    Print image history
-    """
-    for i, item in enumerate(history):
-        print("History[{%d}]\t\t%s" % (i, item['created_by']))
 
 
 def parse_opts():
