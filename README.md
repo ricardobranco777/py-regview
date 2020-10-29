@@ -23,6 +23,7 @@ regview [-h] [--insecure] [--no-trunc] [-u USERNAME] [-p PASSWORD] REGISTRY|IMAG
   -p PASSWORD, --password PASSWORD
                         Password for authentication
   -v, --verbose         Print image history if available
+  -V, --version         Show version and exit
 ```
 
 ## Requirements

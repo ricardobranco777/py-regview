@@ -481,7 +481,10 @@ def parse_opts():
     parser.add_argument(
         '-v', '--verbose', action='count', default=0,
         help="Be verbose. May be specified multiple times")
-    parser.add_argument('image')
+    parser.add_argument(
+        '-V', '--version', action='store_true',
+        help="Show version and exit")
+    parser.add_argument('image', nargs='?')
     return parser.parse_args()
 
 
@@ -489,6 +492,12 @@ def main():
     """
     Main function
     """
+    if opts.version:
+        print(__version__)
+        sys.exit(0)
+    if not opts.image:
+        print("Usage: %s [OPTIONS] REGISTRY|IMAGE" % sys.argv[0])
+        sys.exit(1)
     if opts.username and not opts.password:
         opts.password = getpass("Password: ")
     match = re.match(r'((?:https?://)?[^:/]+(?::[0-9]+)?)/*(.*)', opts.image)
