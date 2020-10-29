@@ -1,8 +1,15 @@
 #!/bin/bash
 
-set -xeE
+# Get a random port that isn't open
+get_random_port () {
+	while true ; do
+		port=$((1024+RANDOM))
+		(echo > /dev/tcp/localhost/$port) 2>/dev/null || break
+	done
+	echo $port
+}
 
-port=$RANDOM
+port=$(get_random_port)
 name=registry$port
 image=regview
 certs="$PWD/tests/certs"
@@ -21,6 +28,7 @@ cleanup () {
 }
 
 #trap "cleanup ; exit 1" ERR
+set -xeE
 
 python_version=$(python3 --version | cut -d. -f2)
 sed -i "s/3\.9/3.$python_version/" Dockerfile
