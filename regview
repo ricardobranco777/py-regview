@@ -337,11 +337,10 @@ class DockerRegistryInfo(DockerRegistry):
             'Cmd', 'Entrypoint', 'Env', 'ExposedPorts',
             'Healthcheck', 'Labels', 'OnBuild', 'Shell',
             'StopSignal', 'User', 'Volumes', 'WorkingDir')
-        if opts.verbose:
-            data.update({key: info['config'][key] for key in keys if info['config'].get(key)})
+        data.update({key: info['config'][key] for key in keys if info['config'].get(key)})
         for key in sorted(data, key=str.casefold):
             print("%-20s\t%s" % (key, data[key]))
-        if opts.verbose > 1:
+        if opts.verbose:
             self.print_history(info['history'])
 
     @staticmethod
@@ -479,12 +478,12 @@ def parse_opts():
         '-p', '--password',
         help="Password for authentication")
     parser.add_argument(
-        '-v', '--verbose', action='count', default=0,
-        help="Be verbose. May be specified multiple times")
+        '-v', '--verbose', action='store_true',
+        help="Show more information")
     parser.add_argument(
         '-V', '--version', action='store_true',
         help="Show version and exit")
-    parser.add_argument('image', nargs='?')
+    parser.add_argument('image', nargs='?', help="REGISTRY[/REPOSITORY[:TAG|@DIGEST]]")
     return parser.parse_args()
 
 
@@ -496,7 +495,7 @@ def main():
         print(__version__)
         sys.exit(0)
     if not opts.image:
-        print("Usage: %s [OPTIONS] REGISTRY|IMAGE" % sys.argv[0])
+        print("Usage: %s [OPTIONS] REGISTRY[/REPOSITORY[:TAG|@DIGEST]]" % sys.argv[0])
         sys.exit(1)
     if opts.username and not opts.password:
         opts.password = getpass("Password: ")
