@@ -20,7 +20,7 @@ pass="testpass"
 
 cleanup () {
 	set +e
-	sudo docker rm -f $name
+	sudo docker rm -vf $name auth
 	sudo docker rmi $image
 	sudo docker rmi localhost:$port/$image:latest
 	rm -f $PWD/tests/config.json
@@ -99,7 +99,7 @@ sudo docker run -d \
        	-e REGISTRY_HTTP_TLS_KEY=/certs/server.key \
        	-e REGISTRY_HTTP_TLS_CLIENTCAS=" - /certs/cacerts.pem" \
 	-v /tmp/registry:/var/lib/registry \
-	-v $certs:/certs \
+	-v $certs:/certs:ro \
 	registry:2
 
 sleep 5
@@ -125,6 +125,44 @@ echo "Testing HTTPS with Basic Auth with username & password specified using Doc
 
 docker="sudo docker run --rm --net=host -v $certs:/certs:ro"
 options="-c /certs/client.pem -k /certs/client.key -C /certs/cacerts.pem -u $user -p $pass"
+test_proto https
+
+echo "Testing HTTPS with Token Auth with username & password specified"
+
+sudo docker rm -vf $name
+
+auth_port=$(get_random_port)
+
+sed -i "s/5001/$auth_port/g" tests/config/auth_config.yml
+
+sudo docker run -d \
+	--net=host \
+	--name auth \
+	-p $auth_port:$auth_port \
+	-v $certs:/ssl:ro \
+	-v $PWD/tests/config:/config:ro \
+	cesanta/docker_auth \
+	/config/auth_config.yml
+
+sudo docker run -d \
+	--net=host \
+	--name $name \
+	-p $port:$port \
+	-e REGISTRY_HTTP_ADDR=0.0.0.0:$port \
+	-e REGISTRY_AUTH=token \
+	-e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/server.pem \
+	-e REGISTRY_HTTP_TLS_KEY=/certs/server.key \
+	-e REGISTRY_AUTH_TOKEN_REALM=https://localhost:$auth_port/auth \
+	-e REGISTRY_AUTH_TOKEN_SERVICE="Docker registry" \
+	-e REGISTRY_AUTH_TOKEN_ISSUER="Auth Service" \
+	-e REGISTRY_AUTH_TOKEN_ROOTCERTBUNDLE=/certs/server.pem \
+	-v /tmp/registry:/var/lib/registry \
+	-v $certs:/certs:ro \
+	registry:2
+
+options="-C /certs/cacerts.pem -u admin -p badmin"
+docker="sudo docker run --rm --net=host -v $certs:/certs:ro"
+
 test_proto https
 
 cleanup
