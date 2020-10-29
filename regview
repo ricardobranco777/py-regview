@@ -28,17 +28,19 @@ from urllib3 import disable_warnings
 __version__ = "0.1.0a"
 
 
-def print_response(got, *args, **kwargs):  # pylint: disable=unused-argument
-    """
-    Print response to aid in debugging
-    """
-    got.hook_called = True
-    data = dump.dump_all(got)
-    print(data.decode('utf-8'))
-    return got
+class _Mixin:  # pylint: disable=too-few-public-methods
+    @staticmethod
+    def _print_response(got, *args, **kwargs):  # pylint: disable=unused-argument
+        """
+        Print response to aid in debugging
+        """
+        got.hook_called = True
+        data = dump.dump_all(got)
+        print(data.decode('utf-8'))
+        return got
 
 
-class GuessAuth2(GuessAuth):  # pylint: disable=too-few-public-methods
+class GuessAuth2(GuessAuth, _Mixin):  # pylint: disable=too-few-public-methods
     """
     Support Token authentication as specified by https://docs.docker.com/registry/spec/auth/token/
     """
@@ -49,7 +51,7 @@ class GuessAuth2(GuessAuth):  # pylint: disable=too-few-public-methods
         self.session = requests.Session()
         self.debug = debug
         if debug:
-            self.session.hooks['response'].append(print_response)
+            self.session.hooks['response'].append(self._print_response)
         self.session.auth = (self.username, self.password)
         if headers:
             self.session.headers.update(headers)
@@ -83,7 +85,7 @@ class GuessAuth2(GuessAuth):  # pylint: disable=too-few-public-methods
         prep = req.request.copy()
 
         if self.debug:
-            print_response(req)
+            self._print_response(req)
 
         prep.headers['Authorization'] = "Bearer " + self._get_token(url, params)
         _r = req.connection.send(prep, **kwargs)
@@ -103,7 +105,7 @@ class GuessAuth2(GuessAuth):  # pylint: disable=too-few-public-methods
         return None
 
 
-class DockerRegistry:
+class DockerRegistry(_Mixin):
     """
     Class to implement Docker Registry methods
     """
@@ -136,7 +138,7 @@ class DockerRegistry:
         requests_log = logging.getLogger("urllib3")
         requests_log.setLevel(logging.DEBUG)
         requests_log.propagate = True
-        self.session.hooks['response'].append(print_response)
+        self.session.hooks['response'].append(self._print_response)
 
     def _fix_registry(self, registry):
         """
