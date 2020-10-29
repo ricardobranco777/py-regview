@@ -90,7 +90,9 @@ class GuessAuth2(GuessAuth, _Mixin):  # pylint: disable=too-few-public-methods
         return _r
 
     def handle_401(self, r, **kwargs):
-        """Resends a request with auth headers, if needed."""
+        """
+        Override this GuessAuth method to support token authentication
+        """
         www_authenticate = r.headers.get('www-authenticate', '').lower()
         if 'basic' in www_authenticate:
             return self._handle_basic_auth_401(r, kwargs)
@@ -231,7 +233,7 @@ class DockerRegistry(_Mixin):
 
     def get_repos(self, pattern=None):
         """
-        Get repositories and return a dict of dicts with the repos as keys
+        Get repositories
         """
         repos = self._get_paginated(self.registry + "/v2/_catalog", "repositories")
         if repos and pattern:
@@ -268,7 +270,7 @@ class DockerRegistry(_Mixin):
 
     def get_blob(self, repo, digest):
         """
-        Get blob
+        Get blob for repo
         """
         try:
             got = self._get("%s/v2/%s/blobs/%s" % (self.registry, repo, digest))
@@ -284,7 +286,7 @@ class DockerRegistryInfo(DockerRegistry):
     """
     def get_info(self, repo, tag):
         """
-        Get info from manifest v2 and digest blob
+        Get info from manifest v2
         """
         manifest = self.get_manifest(repo, tag)
         if not manifest:
@@ -345,7 +347,7 @@ class DockerRegistryInfo(DockerRegistry):
     @staticmethod
     def print_info(repo, tag, info, fmt):
         """
-        Print full info about image
+        Print info about image
         """
         docker_id = info['ID']
         if not opts.no_trunc:
@@ -432,7 +434,7 @@ def pretty_date(string):
 
 def print_history(history):
     """
-    Print history
+    Print image history
     """
     for i, item in enumerate(history):
         print("History[{%d}]\t\t%s" % (i, item['created_by']))
