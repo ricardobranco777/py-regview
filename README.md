@@ -7,7 +7,7 @@ View the contents of a Docker Registry v2
 ## Usage
 
 ```
-regview [-h] [--insecure] [--no-trunc] [-u USERNAME] [-p PASSWORD] REGISTRY|IMAGE
+regview [OPTIONS] REGISTRY[/REPOSITORY[:TAG|@DIGEST]]
   -h, --help            show this help message and exit
   -a, --all             Print information for all architectures
   -c CERT, --cert CERT  Client certificate filename (may contain unencrypted key)
@@ -22,9 +22,15 @@ regview [-h] [--insecure] [--no-trunc] [-u USERNAME] [-p PASSWORD] REGISTRY|IMAG
                         Username for authentication
   -p PASSWORD, --password PASSWORD
                         Password for authentication
-  -v, --verbose         Print image history if available
+  -v, --verbose         Show more information
   -V, --version         Show version and exit
 ```
+
+## Notes
+
+- If only the registry is specified, `regview` will list all images and the `-v` (`--verbose`) option needs to fetch an additional manifest.
+- If an image is specified, the `-v` (`--verbose`) option also displays the image's history.
+- If the `--all` option is specified and the registry holds multiple images for each supported platform/architecture, you can fetch the information for each one using the repository's digest.
 
 ## Requirements
 
@@ -32,3 +38,14 @@ regview [-h] [--insecure] [--no-trunc] [-u USERNAME] [-p PASSWORD] REGISTRY|IMAG
 - requests
 - requests-toolbet
 - python-dateutil
+
+## Bugs / Limitations
+
+- The client key must be unencrypted until this [issue in Python Requests](https://github.com/psf/requests/issues/1573) is fixed.
+- Python Requests doesn't yet support HTTP/2.  I tried with [httpx](https://github.com/encode/httpx) but this library is still immature.
+
+## TODO
+
+- Show all images for all platforms/architectures when listing the registry.
+- Debug TLS.
+- Support proxies?
