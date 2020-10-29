@@ -16,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import timezone
 from getpass import getpass
 from shutil import get_terminal_size
+from urllib.parse import urlparse
 
 import dateutil.parser
 import requests
@@ -109,6 +110,8 @@ class DockerRegistry(_Mixin):
     """
     Class to implement Docker Registry methods
     """
+    _token_cache = {}
+
     def __init__(self, registry, auth=None, cert=None, headers=None, verify=True, debug=False):  # pylint: disable=too-many-arguments
         self.session = requests.Session()
         self.session.mount("http://", requests.adapters.HTTPAdapter(pool_maxsize=100))
@@ -191,6 +194,26 @@ class DockerRegistry(_Mixin):
                 pass
         return None
 
+    def _get(self, url, headers=None, **kwargs):
+        """
+        Cache tokens for repository URL's to avoid so many 401's
+        and calling the auth server that many times
+        """
+        path = urlparse(url).path
+        repo = None
+        headers = headers or {}
+        if not path.startswith("/v2/_"):
+            repo = "/".join(path.split("/")[2:-2])
+            if repo in self._token_cache:
+                headers.update({"Authorization": self._token_cache[repo]})
+        got = self.session.get(url, headers=headers, **kwargs)
+        got.raise_for_status()
+        if repo:
+            token = got.request.headers.get('Authorization')
+            if token.startswith("Bearer "):
+                self._token_cache[repo] = token
+        return got
+
     def _get_paginated(self, url, string):
         """
         Get paginated results
@@ -198,8 +221,7 @@ class DockerRegistry(_Mixin):
         items = []
         while True:
             try:
-                got = self.session.get(url)
-                got.raise_for_status()
+                got = self._get(url)
             except RequestException:
                 logging.error("%s: %s", url, got.reason)
                 return None
@@ -239,8 +261,7 @@ class DockerRegistry(_Mixin):
         if fat:
             content_type = "application/vnd.docker.distribution.manifest.list.v2+json"
         try:
-            got = self.session.get(url, headers={"Accept": content_type})
-            got.raise_for_status()
+            got = self._get(url, headers={"Accept": content_type})
         except RequestException:
             fmt = "%s@%s: %s" if tag.startswith("sha256:") else "%s:%s: %s"
             logging.error(fmt, repo, tag, got.reason)
@@ -255,8 +276,7 @@ class DockerRegistry(_Mixin):
         Get blob
         """
         try:
-            got = self.session.get("%s/v2/%s/blobs/%s" % (self.registry, repo, digest))
-            got.raise_for_status()
+            got = self._get("%s/v2/%s/blobs/%s" % (self.registry, repo, digest))
         except RequestException:
             logging.error("%s@%s: %s", repo, digest, got.reason)
             return None
