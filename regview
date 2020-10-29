@@ -42,6 +42,8 @@ class GuessAuth2(GuessAuth):  # pylint: disable=too-few-public-methods
     """
     Support Token authentication as specified by https://docs.docker.com/registry/spec/auth/token/
     """
+    _token_cache = {}
+
     def __init__(self, *args, debug=False, headers=None, verify=True, **kwargs):
         super().__init__(*args, **kwargs)
         self.session = requests.Session()
@@ -53,6 +55,19 @@ class GuessAuth2(GuessAuth):  # pylint: disable=too-few-public-methods
             self.session.headers.update(headers)
         self.session.verify = verify
         self.session.mount("https://", requests.adapters.HTTPAdapter(pool_maxsize=100))
+
+    def _get_token(self, url, params):
+        key = frozenset(params.items())
+        if key not in self._token_cache:
+            try:
+                got = self.session.post(url, params=params)
+                got.raise_for_status()
+            except RequestException as err:
+                logging.error("%s", err)
+                sys.exit(1)
+            data = got.json()
+            self._token_cache[key] = data.get('token', data.get('access_token'))
+        return self._token_cache[key]
 
     def _handle_token_auth_401(self, req, kwargs):
         params = requests.utils.parse_dict_header(req.headers['www-authenticate'])
@@ -70,16 +85,7 @@ class GuessAuth2(GuessAuth):  # pylint: disable=too-few-public-methods
         if self.debug:
             print_response(req)
 
-        try:
-            got = self.session.post(url, params=params)
-            got.raise_for_status()
-        except RequestException as err:
-            logging.error("%s", err)
-            sys.exit(1)
-        data = got.json()
-        token = data.get('token', data.get('access_token'))
-
-        prep.headers['Authorization'] = "Bearer " + token
+        prep.headers['Authorization'] = "Bearer " + self._get_token(url, params)
         _r = req.connection.send(prep, **kwargs)
         # _r.history.append(req)
         _r.request = prep
