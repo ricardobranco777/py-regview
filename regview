@@ -337,7 +337,8 @@ class DockerRegistryInfo(DockerRegistry):
             'Cmd', 'Entrypoint', 'Env', 'ExposedPorts',
             'Healthcheck', 'Labels', 'OnBuild', 'Shell',
             'StopSignal', 'User', 'Volumes', 'WorkingDir')
-        data.update({key: info['config'][key] for key in keys if info['config'].get(key)})
+        if opts.verbose:
+            data.update({key: info['config'][key] for key in keys if info['config'].get(key)})
         for key in sorted(data, key=str.casefold):
             print("%-20s\t%s" % (key, data[key]))
         if opts.verbose:
