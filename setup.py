@@ -3,7 +3,6 @@
 Setup script
 """
 
-# from setuptools import find_packages, setup
 from setuptools import setup
 
 
@@ -15,16 +14,9 @@ def read(path):
         return file_.read()
 
 
-def grep_version():
-    """
-    Get __version__
-    """
-    return "0.1.0a"
-
-
 setup(
     name='regview',
-    version=grep_version(),
+    version="0.9.0",
     description="View instance information on all supported cloud providers",
     long_description=read('README.md'),
     long_description_content_type="text/markdown",
@@ -32,13 +24,12 @@ setup(
     author_email='rbranco@suse.de',
     url='https://github.com/ricardobranco777/regview',
     package_dir={'regview': '.'},
-    # packages=find_packages(),
     include_package_data=True,
     python_requires='>=3.5',
     install_requires=read('requirements.txt'),
     license='MIT License',
     zip_safe=False,
-    keywords='regview',
+    keywords=['regview', 'docker registry'],
     scripts=['regview'],
     classifiers=[
         'Development Status :: 4 - Beta',

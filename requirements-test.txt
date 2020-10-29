@@ -1,5 +1,3 @@
--r requirements.txt
-
 flake8
 pylint
 https://github.com/ricardobranco777/simplepki/archive/master.zip
