@@ -205,7 +205,7 @@ class DockerRegistry(_Mixin):
                 headers.update({"Authorization": self._token_cache[repo]})
         got = self.session.get(url, headers=headers, **kwargs)
         got.raise_for_status()
-        if repo:
+        if repo and repo not in self._token_cache:
             token = got.request.headers.get('Authorization')
             if token and token.startswith("Bearer "):
                 self._token_cache[repo] = token
