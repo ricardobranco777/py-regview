@@ -124,8 +124,8 @@ class DockerRegistry(_Mixin):
         if headers:
             self.session.headers.update(headers)
         self.session.verify = verify
-        self._fix_registry(registry)
         disable_warnings()
+        self._fix_registry(registry)
 
     def __enter__(self):
         return self
