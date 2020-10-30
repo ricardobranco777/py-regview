@@ -218,8 +218,8 @@ class DockerRegistry(_Mixin):
         while True:
             try:
                 got = self._get(url)
-            except RequestException:
-                logging.error("%s: %s", url, got.reason)
+            except RequestException as err:
+                logging.error("%s: %s", url, err)
                 return None
             items.extend(got.json()[string])
             if 'Link' in got.headers:
@@ -258,9 +258,9 @@ class DockerRegistry(_Mixin):
             content_type = "application/vnd.docker.distribution.manifest.list.v2+json"
         try:
             got = self._get(url, headers={"Accept": content_type})
-        except RequestException:
+        except RequestException as err:
             fmt = "%s@%s: %s" if tag.startswith("sha256:") else "%s:%s: %s"
-            logging.error(fmt, repo, tag, got.reason)
+            logging.error(fmt, repo, tag, err)
             return None
         manifest = got.json()
         if not fat:
@@ -273,8 +273,8 @@ class DockerRegistry(_Mixin):
         """
         try:
             got = self._get(f"{self.registry}/v2/{repo}/blobs/{digest}")
-        except RequestException:
-            logging.error("%s@%s: %s", repo, digest, got.reason)
+        except RequestException as err:
+            logging.error("%s@%s: %s", repo, digest, err)
             return None
         return got
 
