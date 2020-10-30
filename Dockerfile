@@ -16,4 +16,4 @@ ENV	PYTHONUNBUFFERED 1
 WORKDIR	/user
 
 USER	user
-ENTRYPOINT ["/usr/local/bin/python3", "/regview"]
+ENTRYPOINT ["/regview"]
