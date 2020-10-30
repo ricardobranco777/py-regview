@@ -350,7 +350,7 @@ class DockerRegistryInfo(DockerRegistry):
         Print image history
         """
         for i, item in enumerate(history):
-            print("History[{%d}]\t\t%s" % (i, item['created_by']))
+            print("History[%d]\t\t%s" % (i, item['created_by']))
 
     @staticmethod
     def print_info(repo, tag, info, fmt):
