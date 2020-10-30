@@ -127,6 +127,10 @@ docker="sudo docker run --rm --net=host -v $certs:/certs:ro"
 options="-c /certs/client.pem -k /certs/client.key -C /certs/cacerts.pem -u $user -p $pass"
 test_proto https
 
+docker="sudo docker run --rm --net=host -v $certs:/certs:ro"
+options="-c /certs/client.pem -k /certs/client.key --insecure -u $user -p $pass"
+$docker regview $options $proto://localhost:$port/$image:latest | grep -q $digest
+
 echo "Testing HTTPS with Token Auth with username & password specified"
 
 sudo docker rm -vf $name
