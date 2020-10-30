@@ -160,9 +160,12 @@ sudo docker run -d \
 	-v $certs:/certs:ro \
 	registry:2
 
-options="-C /certs/cacerts.pem -u admin -p badmin"
+options="-C /certs/cacerts.pem -u admin -p badmin --debug -v"
 docker="sudo docker run --rm --net=host -v $certs:/certs:ro"
 
 test_proto https
+
+# Test token cache
+test $($docker regview $options https://localhost:$port/$image:latest 2>/dev/null | grep -c POST) -eq 2
 
 cleanup
