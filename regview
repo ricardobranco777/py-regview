@@ -83,9 +83,8 @@ class GuessAuth2(GuessAuth, _Mixin):  # pylint: disable=too-few-public-methods
         if self.debug:
             self._print_response(req)
 
-        prep.headers['Authorization'] = "Bearer " + self._get_token(url, params)
+        prep.headers['Authorization'] = f"Bearer {self._get_token(url, params)}"
         _r = req.connection.send(prep, **kwargs)
-        # _r.history.append(req)
         _r.request = prep
         return _r
 
@@ -146,7 +145,7 @@ class DockerRegistry(_Mixin):
         """
         if registry.startswith(("http://", "https://")):
             try:
-                got = self.session.get(registry + "/v2/")
+                got = self.session.get(f"{registry}/v2/")
                 got.raise_for_status()
             except RequestException as err:
                 logging.error("%s", err)
@@ -154,14 +153,14 @@ class DockerRegistry(_Mixin):
             self.registry = registry
         else:
             try:
-                got = self.session.get("https://%s/v2/" % registry)
+                got = self.session.get(f"https://{registry}/v2/")
                 got.raise_for_status()
-                self.registry = "https://" + registry
+                self.registry = f"https://{registry}"
             except RequestException:
                 try:
-                    got = self.session.get("http://%s/v2/" % registry)
+                    got = self.session.get(f"http://{registry}/v2/")
                     got.raise_for_status()
-                    self.registry = "http://" + registry
+                    self.registry = f"http://{registry}"
                 except RequestException as err:
                     logging.error("%s", err)
                     sys.exit(1)
@@ -183,7 +182,7 @@ class DockerRegistry(_Mixin):
         except OSError:
             return None
         registry = re.sub("^https?://", "", registry)
-        for try_registry in ("https://" + registry, "http://" + registry, registry):
+        for try_registry in (f"https://{registry}", f"http://{registry}", registry):
             try:
                 auth = config['auths'][try_registry]['auth']
                 return tuple(base64.b64decode(auth).decode('utf-8').split(':', 1))
@@ -226,7 +225,7 @@ class DockerRegistry(_Mixin):
             if 'Link' in got.headers:
                 url = requests.utils.parse_header_links(got.headers['Link'])[0]['url']
                 if url.startswith("/v2/"):
-                    url = self.registry + url
+                    url = f"{self.registry}{url}"
             else:
                 break
         return items
@@ -235,7 +234,7 @@ class DockerRegistry(_Mixin):
         """
         Get repositories
         """
-        repos = self._get_paginated(self.registry + "/v2/_catalog", "repositories")
+        repos = self._get_paginated(f"{self.registry}/v2/_catalog", "repositories")
         if repos and pattern:
             return fnmatch.filter(repos, pattern)
         return repos
@@ -244,7 +243,7 @@ class DockerRegistry(_Mixin):
         """
         Get tags for specified repo
         """
-        tags = self._get_paginated("%s/v2/%s/tags/list" % (self.registry, repo), "tags")
+        tags = self._get_paginated(f"{self.registry}/v2/{repo}/tags/list", "tags")
         if tags and pattern:
             tags = fnmatch.filter(tags, pattern)
         return tags
@@ -253,7 +252,7 @@ class DockerRegistry(_Mixin):
         """
         Get the manifest
         """
-        url = "%s/v2/%s/manifests/%s" % (self.registry, repo, tag)
+        url = f"{self.registry}/v2/{repo}/manifests/{tag}"
         content_type = "application/vnd.docker.distribution.manifest.v2+json"
         if fat:
             content_type = "application/vnd.docker.distribution.manifest.list.v2+json"
@@ -273,7 +272,7 @@ class DockerRegistry(_Mixin):
         Get blob for repo
         """
         try:
-            got = self._get("%s/v2/%s/blobs/%s" % (self.registry, repo, digest))
+            got = self._get(f"{self.registry}/v2/{repo}/blobs/{digest}")
         except RequestException:
             logging.error("%s@%s: %s", repo, digest, got.reason)
             return None
@@ -315,7 +314,7 @@ class DockerRegistryInfo(DockerRegistry):
             keys = ('features', 'os.features')
             info.update({key: ",".join(info[key]) for key in keys if key in info})
             for key, value in sorted(info.items()):
-                print("%-20s\t%s" % (key, value))
+                print(f"{key:<20}\t{value}")
             print()
 
     def print_fullinfo(self, repo, tag="latest"):
@@ -340,7 +339,7 @@ class DockerRegistryInfo(DockerRegistry):
         if opts.verbose:
             data.update({key: info['config'][key] for key in keys if info['config'].get(key)})
         for key in sorted(data, key=str.casefold):
-            print("%-20s\t%s" % (key, data[key]))
+            print(f"{key:<20}\t{data[key]}")
         if opts.verbose:
             self.print_history(info['history'])
 
@@ -350,7 +349,7 @@ class DockerRegistryInfo(DockerRegistry):
         Print image history
         """
         for i, item in enumerate(history):
-            print("History[%d]\t\t%s" % (i, item['created_by']))
+            print(f"History[{i}]\t\t{item['created_by']}")
 
     @staticmethod
     def print_info(repo, tag, info, fmt):
@@ -360,7 +359,7 @@ class DockerRegistryInfo(DockerRegistry):
         docker_id = info['ID']
         if not opts.no_trunc:
             docker_id = docker_id[len("sha256:"):len("sha256:") + 12]
-        values = ["%s:%s" % (repo, tag), docker_id]
+        values = [f"{repo}:{tag}", docker_id]
         if opts.digests:
             values.insert(1, info['Digest'])
         if opts.verbose:
@@ -389,7 +388,7 @@ class DockerRegistryInfo(DockerRegistry):
         image_width = min(
             int(get_terminal_size().columns / 2),
             max(len(repo) for repo in repos) + 20)
-        fmt = "%%-%ds" % image_width
+        fmt = f"%-{image_width}s"
         if opts.digests:
             fmt += "  %-72s"
         fmt += "  %-72s" if opts.no_trunc else "  %-12s"
@@ -496,7 +495,7 @@ def main():
         print(__version__)
         sys.exit(0)
     if not opts.image:
-        print("Usage: %s [OPTIONS] REGISTRY[/REPOSITORY[:TAG|@DIGEST]]" % sys.argv[0])
+        print(f"Usage: {sys.argv[0]} [OPTIONS] REGISTRY[/REPOSITORY[:TAG|@DIGEST]]")
         sys.exit(1)
     if opts.username and not opts.password:
         opts.password = getpass("Password: ")
@@ -509,7 +508,7 @@ def main():
             registry,
             auth=(opts.username, opts.password) if opts.username else None,
             cert=(opts.cert, opts.key) if opts.cert and opts.key else opts.cert,
-            headers={'User-Agent': "regview/" + __version__},
+            headers={'User-Agent': f"regview/{__version__}"},
             verify=opts.cacert if opts.cacert else not opts.insecure,
             debug=opts.debug) as reg:
         if image and not glob_repo:

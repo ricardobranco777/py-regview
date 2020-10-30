@@ -35,7 +35,7 @@ regview [OPTIONS] REGISTRY[/REPOSITORY[:TAG|@DIGEST]]
 
 ## Requirements
 
-- Python 3.5+
+- Python 3.6+
 - requests
 - requests-toolbet
 - python-dateutil
