@@ -127,9 +127,15 @@ docker="sudo docker run --rm --net=host -v $certs:/certs:ro"
 options="-c /certs/client.pem -k /certs/client.key -C /certs/cacerts.pem -u $user -p $pass"
 test_proto https
 
+echo "Testing --insecure option"
 docker="sudo docker run --rm --net=host -v $certs:/certs:ro"
 options="-c /certs/client.pem -k /certs/client.key --insecure -u $user -p $pass"
 $docker regview $options $proto://localhost:$port/$image:latest | grep -q $digest
+
+echo "Testing --verbose"
+docker="sudo docker run --rm --net=host -v $certs:/certs:ro"
+options="-c /certs/client.pem -k /certs/client.key --insecure -v -u $user -p $pass"
+$docker regview $options $proto://localhost:$port/$image:latest | grep History | grep ENTRYPOINT | grep -q regview
 
 echo "Testing HTTPS with Token Auth with username & password specified"
 
