@@ -24,7 +24,7 @@ cleanup () {
 	sudo docker rmi $image
 	sudo docker rmi localhost:$port/$image:latest
 	rm -f $PWD/tests/config.json
-	rm -rf "$certs"
+	rm -f $certs/*
 }
 
 #trap "cleanup ; exit 1" ERR
