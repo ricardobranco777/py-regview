@@ -31,7 +31,7 @@ regview [OPTIONS] REGISTRY[/REPOSITORY[:TAG|@DIGEST]]
 - If only the registry is specified, `regview` will list all images and the `-v` (`--verbose`) option needs to fetch an additional manifest.
 - In listing mode, shell style pattern matching is supported in repositories and tags like `busybo?/late*` or `debian:[7-9]`.
 - If an image is specified, the `-v` (`--verbose`) option also displays the image's history.
-- If the `--all` option is specified and the registry holds multiple images for each supported platform/architecture, you can fetch the information for each one using the repository's digest.
+- If the `--all` option is specified and the registry holds multiple images for each supported platform/architecture, you can fetch the information for each one using the image's digest.
 
 ## Requirements
 
