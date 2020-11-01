@@ -10,22 +10,20 @@ import os
 import re
 import sys
 
-from urllib.parse import urlparse
+from functools import lru_cache
 
 import requests
 from requests.exceptions import RequestException
 from urllib3 import disable_warnings
 
 from .auth import GuessAuth2
-from .utils import _Mixin, LRU
+from .utils import _Mixin
 
 
 class DockerRegistry(_Mixin):
     """
     Class to implement Docker Registry methods
     """
-    _token_cache = LRU()
-
     def __init__(self, registry, auth=None, cert=None, headers=None, verify=True, debug=False):  # pylint: disable=too-many-arguments
         self.session = requests.Session()
         self.session.mount("http://", requests.adapters.HTTPAdapter(pool_maxsize=100))
@@ -110,41 +108,33 @@ class DockerRegistry(_Mixin):
                 pass
         return None
 
-    def _get(self, url, headers=None, **kwargs):
+    @lru_cache(maxsize=128)
+    def _get_token_repo(self, repo):
+        """
+        Get token for repo
+        """
+        if self.session.auth and self.session.auth.url:
+            token = self.session.auth.get_token(params={"scope": f"repository:{repo}:pull"})
+            return {"Authorization": token}
+        return {}
+
+    def _get(self, url, **kwargs):
         """
         Cache tokens for repository URL's to avoid so many 401's
         and calling the auth server that many times
         """
-        path = urlparse(url).path
-        repo = None
-        headers = headers or {}
-        if path == "/v2/_catalog":
-            if self.session.auth and self.session.auth.url:
-                token = self.session.auth.get_token(params={"scope": "registry:catalog:*"})
-                headers.update({"Authorization": token})
-        else:
-            repo = "/".join(path.split("/")[2:-2])
-            if repo in self._token_cache:
-                headers.update({"Authorization": self._token_cache[repo]})
-            elif self.session.auth and self.session.auth.url:
-                token = self.session.auth.get_token(params={"scope": f"repository:{repo}:pull"})
-                headers.update({"Authorization": token})
-        got = self.session.get(url, headers=headers, **kwargs)
+        got = self.session.get(url, **kwargs)
         got.raise_for_status()
-        if repo and repo not in self._token_cache:
-            token = got.request.headers.get('Authorization')
-            if token and token.startswith("Bearer "):
-                self._token_cache[repo] = token
         return got
 
-    def _get_paginated(self, url, string):
+    def _get_paginated(self, url, string, **kwargs):
         """
         Get paginated results
         """
         items = []
         while True:
             try:
-                got = self._get(url)
+                got = self._get(url, **kwargs)
             except RequestException as err:
                 logging.error("%s: %s", url, err)
                 return None
@@ -161,7 +151,11 @@ class DockerRegistry(_Mixin):
         """
         Get repositories
         """
-        repos = self._get_paginated(f"{self.registry}/v2/_catalog", "repositories")
+        headers = {}
+        if self.session.auth and self.session.auth.url:
+            token = self.session.auth.get_token(params={"scope": "registry:catalog:*"})
+            headers.update({"Authorization": token})
+        repos = self._get_paginated(f"{self.registry}/v2/_catalog", "repositories", headers=headers)
         if repos and pattern:
             return fnmatch.filter(repos, pattern)
         return repos
@@ -170,7 +164,8 @@ class DockerRegistry(_Mixin):
         """
         Get tags for specified repo
         """
-        tags = self._get_paginated(f"{self.registry}/v2/{repo}/tags/list", "tags")
+        headers = self._get_token_repo(repo)
+        tags = self._get_paginated(f"{self.registry}/v2/{repo}/tags/list", "tags", headers=headers)
         if tags and pattern:
             tags = fnmatch.filter(tags, pattern)
         return tags
@@ -183,8 +178,10 @@ class DockerRegistry(_Mixin):
         content_type = "application/vnd.docker.distribution.manifest.v2+json"
         if fat:
             content_type = "application/vnd.docker.distribution.manifest.list.v2+json"
+        headers = self._get_token_repo(repo)
+        headers.update({"Accept": content_type})
         try:
-            got = self._get(url, headers={"Accept": content_type})
+            got = self._get(url, headers=headers)
         except RequestException as err:
             fmt = "%s@%s: %s" if tag.startswith("sha256:") else "%s:%s: %s"
             logging.error(fmt, repo, tag, err)
@@ -198,8 +195,10 @@ class DockerRegistry(_Mixin):
         """
         Get blob for repo
         """
+        url = f"{self.registry}/v2/{repo}/blobs/{digest}"
+        headers = self._get_token_repo(repo)
         try:
-            got = self._get(f"{self.registry}/v2/{repo}/blobs/{digest}")
+            got = self._get(url, headers=headers)
         except RequestException as err:
             logging.error("%s@%s: %s", repo, digest, err)
             return None
