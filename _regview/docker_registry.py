@@ -2,12 +2,8 @@
 Docker Registry module
 """
 
-import base64
 import fnmatch
-import json
 import logging
-import os
-import re
 import sys
 
 from functools import lru_cache
@@ -17,7 +13,7 @@ from requests.exceptions import RequestException
 from urllib3 import disable_warnings
 
 from .auth import GuessAuth2
-from .utils import _Mixin
+from .utils import _Mixin, get_docker_credentials
 
 
 class DockerRegistry(_Mixin):
@@ -31,7 +27,7 @@ class DockerRegistry(_Mixin):
         logging.basicConfig(format='%(levelname)s: %(message)s')
         if debug:
             self._enable_debug()
-        auth = auth or self._get_creds(registry)
+        auth = auth or get_docker_credentials(registry)
         if auth:
             auth = GuessAuth2(*auth, headers=headers, verify=verify, debug=debug)
         self.session.auth = auth
@@ -85,28 +81,6 @@ class DockerRegistry(_Mixin):
         if got.headers.get('docker-distribution-api-version') != 'registry/2.0':
             logging.error("Invalid registry: %s", registry)
             sys.exit(1)
-
-    @staticmethod
-    def _get_creds(registry):
-        """
-        Gets the credentials from ~/.docker/config.json
-        """
-        config_file = os.path.join(
-            os.getenv("DOCKER_CONFIG", os.path.expanduser(os.path.join("~", ".docker"))),
-            "config.json")
-        try:
-            with open(config_file) as file:
-                config = json.load(file)
-        except OSError:
-            return None
-        registry = re.sub("^https?://", "", registry)
-        for try_registry in (f"https://{registry}", f"http://{registry}", registry):
-            try:
-                auth = config['auths'][try_registry]['auth']
-                return tuple(base64.b64decode(auth).decode('utf-8').split(':', 1))
-            except KeyError:
-                pass
-        return None
 
     @lru_cache(maxsize=128)
     def _get_token_repo(self, repo):
