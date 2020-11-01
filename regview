@@ -8,13 +8,11 @@ import re
 import sys
 
 from concurrent.futures import ThreadPoolExecutor
-from datetime import timezone
 from getpass import getpass
 from shutil import get_terminal_size
 
-import dateutil.parser
-
 from _regview.docker_registry import DockerRegistry
+from _regview.utils import pretty_date, pretty_size
 from _regview import __version__
 
 
@@ -64,9 +62,9 @@ class DockerRegistryInfo(DockerRegistry):
         if info is None:
             return
         info.update(self.get_blob(repo, info['ID']).json())
-        if 'created' in info:
+        if not opts.raw:
             info['created'] = pretty_date(info['created'])
-        info['CompressedSize'] = pretty_size(info['CompressedSize'])
+            info['CompressedSize'] = pretty_size(info['CompressedSize'])
         keys = (
             'architecture', 'author', 'created', 'docker_version', 'os',
             'CompressedSize', 'ID', 'Digest')
@@ -102,7 +100,10 @@ class DockerRegistryInfo(DockerRegistry):
         if opts.digests:
             values.insert(1, info['Digest'])
         if opts.verbose:
-            values.append(pretty_date(info['created']))
+            created = info['created']
+            if not opts.raw:
+                created = pretty_date(created)
+            values.append(created)
         print(fmt % tuple(values))
 
     def get_images(self, repos, pattern_tag=None):
@@ -152,30 +153,6 @@ class DockerRegistryInfo(DockerRegistry):
                     if opts.verbose:
                         info.update(digests[info['ID']])
                     self.print_info(repo, tag, info, fmt)
-
-
-def pretty_size(size):
-    """
-    Converts a size in bytes to a string in KB, MB, GB or TB
-    """
-    if opts.raw:
-        return size
-    units = (' ', 'K', 'M', 'G', 'T')
-    for i in range(4, -1, -1):
-        if size > 1024**i:
-            return "%.2f%cB" % (float(size) / 1024**i, units[i])
-    return None
-
-
-def pretty_date(string):
-    """
-    Converts date/time string in ISO-8601 format to date(1)
-    """
-    if opts.raw:
-        return string
-    # utc_date = datetime.fromisoformat(re.sub(r"\.\d+Z$", "+00:00", string))  # Python 3.7+ only
-    utc_date = dateutil.parser.isoparse(string).replace(tzinfo=timezone.utc)
-    return utc_date.astimezone().strftime("%a %b %d %H:%M:%S %Z %Y")
 
 
 def parse_opts():
