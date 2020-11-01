@@ -130,6 +130,8 @@ class DockerRegistry(_Mixin):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        if isinstance(self.session.auth, GuessAuth2):
+            self.session.auth.session.close()
         self.session.close()
 
     def _enable_debug(self):
