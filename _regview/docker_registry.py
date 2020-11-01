@@ -13,10 +13,10 @@ from requests.exceptions import RequestException
 from urllib3 import disable_warnings
 
 from .auth import GuessAuth2
-from .utils import _Mixin, get_docker_credentials
+from .utils import get_docker_credentials, print_response
 
 
-class DockerRegistry(_Mixin):
+class DockerRegistry:
     """
     Class to implement Docker Registry methods
     """
@@ -51,7 +51,7 @@ class DockerRegistry(_Mixin):
         requests_log = logging.getLogger("urllib3")
         requests_log.setLevel(logging.DEBUG)
         requests_log.propagate = True
-        self.session.hooks['response'].append(self._print_response)
+        self.session.hooks['response'].append(print_response)
 
     def _fix_registry(self, registry):
         """

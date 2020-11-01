@@ -9,10 +9,10 @@ import requests
 from requests.exceptions import RequestException
 from requests_toolbelt import GuessAuth
 
-from .utils import _Mixin
+from .utils import print_response
 
 
-class GuessAuth2(GuessAuth, _Mixin):
+class GuessAuth2(GuessAuth):
     """
     Support Token authentication as specified by https://docs.docker.com/registry/spec/auth/token/
     """
@@ -24,7 +24,7 @@ class GuessAuth2(GuessAuth, _Mixin):
         self.session = requests.Session()
         self.debug = debug
         if debug:
-            self.session.hooks['response'].append(self._print_response)
+            self.session.hooks['response'].append(print_response)
         self.session.auth = (self.username, self.password)
         if headers:
             self.session.headers.update(headers)
@@ -66,7 +66,7 @@ class GuessAuth2(GuessAuth, _Mixin):
         prep = req.request.copy()
 
         if self.debug:
-            self._print_response(req)
+            print_response(req)
 
         prep.headers['Authorization'] = self.get_token(params)
         _r = req.connection.send(prep, **kwargs)
