@@ -9,7 +9,7 @@ import requests
 from requests.exceptions import RequestException
 from requests_toolbelt import GuessAuth
 
-from _regview.utils import _Mixin
+from .utils import _Mixin
 
 
 class GuessAuth2(GuessAuth, _Mixin):  # pylint: disable=too-few-public-methods

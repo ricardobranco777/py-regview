@@ -16,8 +16,8 @@ import requests
 from requests.exceptions import RequestException
 from urllib3 import disable_warnings
 
-from _regview.auth import GuessAuth2
-from _regview.utils import _Mixin, LRU
+from .auth import GuessAuth2
+from .utils import _Mixin, LRU
 
 
 class DockerRegistry(_Mixin):
