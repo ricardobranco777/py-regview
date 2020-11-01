@@ -28,9 +28,10 @@ class GuessAuth2(GuessAuth, _Mixin):  # pylint: disable=too-few-public-methods
         self.session.verify = verify
         self.session.mount("https://", requests.adapters.HTTPAdapter(pool_maxsize=100))
 
-    def _get_token(self, url, params):
+    def _get_token(self, url, params, use_post=False):
         try:
-            got = self.session.post(url, params=params)
+            method = "POST" if use_post else "GET"
+            got = self.session.request(method, url, params=params)
             got.raise_for_status()
         except RequestException as err:
             logging.error("%s", err)
