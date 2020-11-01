@@ -1,6 +1,6 @@
 test:
-	@pylint regview *.py
-	@flake8 regview *.py --ignore=E501
+	@pylint regview setup.py _regview/*.py
+	@flake8 regview setup.py _regview/*.py --ignore=E501
 	@bash -n ./tests/integration.sh
 
 test-integration:

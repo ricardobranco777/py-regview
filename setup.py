@@ -3,7 +3,8 @@
 Setup script
 """
 
-from setuptools import setup
+from setuptools import find_packages, setup
+from _regview import __version__
 
 
 def read(path):
@@ -14,9 +15,16 @@ def read(path):
         return file_.read()
 
 
+def grep_version():
+    """
+    Get __version__
+    """
+    return __version__
+
+
 setup(
     name='regview',
-    version="0.9.0",
+    version=grep_version(),
     description="View instance information on all supported cloud providers",
     long_description=read('README.md'),
     long_description_content_type="text/markdown",
@@ -24,6 +32,7 @@ setup(
     author_email='rbranco@suse.de',
     url='https://github.com/ricardobranco777/regview',
     package_dir={'regview': '.'},
+    packages=find_packages(),
     include_package_data=True,
     python_requires='>=3.6',
     install_requires=read('requirements.txt'),

@@ -8,12 +8,12 @@ RUN	apk add --no-cache tzdata && \
 
 RUN	adduser -D user -h /user
 
-COPY	regview /
+COPY	. /regview
 
-ENV     PYTHONPATH /
+ENV     PYTHONPATH /regview
 ENV	PYTHONUNBUFFERED 1
 
 WORKDIR	/user
 
 USER	user
-ENTRYPOINT ["/regview"]
+ENTRYPOINT ["/regview/regview"]
