@@ -1,8 +1,9 @@
 # pylint: disable=invalid-name,line-too-long,missing-module-docstring,missing-class-docstring,missing-function-docstring
 
 import unittest
+from unittest.mock import patch, mock_open
 
-from _regview.utils import pretty_date, pretty_size
+from _regview.utils import pretty_date, pretty_size, get_docker_credentials
 
 
 class Test_utils(unittest.TestCase):
@@ -12,3 +13,18 @@ class Test_utils(unittest.TestCase):
 
     def test_pretty_size(self):
         self.assertEqual(pretty_size(20983074), "20.01MB")
+
+    @patch('builtins.open', mock_open(read_data='{"auths": {"https://localhost:5000": {"auth": "dGVzdHVzZXI6dGVzdHBhc3N3b3Jk"}}}'))
+    def test_get_docker_credentials1(self):
+        self.assertEqual(get_docker_credentials("localhost:5000"), ("testuser", "testpassword"))
+        self.assertEqual(get_docker_credentials("https://localhost:5000"), ("testuser", "testpassword"))
+
+    @patch('builtins.open', mock_open(read_data='{"auths": {"localhost:5000": {"auth": "dGVzdHVzZXI6dGVzdHBhc3N3b3Jk"}}}'))
+    def test_get_docker_credentials2(self):
+        self.assertEqual(get_docker_credentials("localhost:5000"), ("testuser", "testpassword"))
+        self.assertEqual(get_docker_credentials("https://localhost:5000"), ("testuser", "testpassword"))
+
+    @patch('builtins.open', mock_open(read_data='{"auths": {"http://localhost:5000": {"auth": "dGVzdHVzZXI6dGVzdHBhc3N3b3Jk"}}}'))
+    def test_get_docker_credentials3(self):
+        self.assertEqual(get_docker_credentials("localhost:5000"), ("testuser", "testpassword"))
+        self.assertEqual(get_docker_credentials("http://localhost:5000"), ("testuser", "testpassword"))
