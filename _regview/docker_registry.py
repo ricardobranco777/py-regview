@@ -122,7 +122,7 @@ class DockerRegistry(_Mixin):
             if self.session.auth and self.session.auth.url:
                 token = self.session.auth.get_token(params={"scope": "registry:catalog:*"})
                 headers.update({"Authorization": token})
-        if not path.startswith("/v2/_"):
+        else:
             repo = "/".join(path.split("/")[2:-2])
             if repo in self._token_cache:
                 headers.update({"Authorization": self._token_cache[repo]})
