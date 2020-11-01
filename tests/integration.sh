@@ -176,6 +176,7 @@ docker="sudo docker run --rm --net=host -v $certs:/certs:ro"
 test_proto https
 
 # Test token cache
-test $($docker regview $options https://localhost:$port/$image:latest 2>/dev/null | grep -c POST) -eq 2
+test $($docker regview $options https://localhost:$port 2>/dev/null | grep -c " 401 ") -eq 1
+test $($docker regview $options https://localhost:$port/$image:latest 2>/dev/null | grep -c " 401 ") -eq 1
 
 cleanup

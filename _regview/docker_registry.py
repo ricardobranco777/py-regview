@@ -118,10 +118,17 @@ class DockerRegistry(_Mixin):
         path = urlparse(url).path
         repo = None
         headers = headers or {}
+        if path == "/v2/_catalog":
+            if self.session.auth and self.session.auth.url:
+                token = self.session.auth.get_token(params={"scope": "registry:catalog:*"})
+                headers.update({"Authorization": token})
         if not path.startswith("/v2/_"):
             repo = "/".join(path.split("/")[2:-2])
             if repo in self._token_cache:
                 headers.update({"Authorization": self._token_cache[repo]})
+            elif self.session.auth and self.session.auth.url:
+                token = self.session.auth.get_token(params={"scope": f"repository:{repo}:pull"})
+                headers.update({"Authorization": token})
         got = self.session.get(url, headers=headers, **kwargs)
         got.raise_for_status()
         if repo and repo not in self._token_cache:

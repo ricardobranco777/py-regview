@@ -12,10 +12,13 @@ from requests_toolbelt import GuessAuth
 from .utils import _Mixin
 
 
-class GuessAuth2(GuessAuth, _Mixin):  # pylint: disable=too-few-public-methods
+class GuessAuth2(GuessAuth, _Mixin):
     """
     Support Token authentication as specified by https://docs.docker.com/registry/spec/auth/token/
     """
+    url = None
+    service = None
+
     def __init__(self, *args, debug=False, headers=None, verify=True, **kwargs):
         super().__init__(*args, **kwargs)
         self.session = requests.Session()
@@ -28,21 +31,31 @@ class GuessAuth2(GuessAuth, _Mixin):  # pylint: disable=too-few-public-methods
         self.session.verify = verify
         self.session.mount("https://", requests.adapters.HTTPAdapter(pool_maxsize=100))
 
-    def _get_token(self, url, params, use_post=False):
+    def get_token(self, params=None, use_post=False):
+        """
+        Get token
+        """
+        params = params or {}
+        if 'service' not in params:
+            params.update({'service': self.service})
         try:
             method = "POST" if use_post else "GET"
-            got = self.session.request(method, url, params=params)
+            got = self.session.request(method, self.url, params=params)
             got.raise_for_status()
         except RequestException as err:
             logging.error("%s", err)
             sys.exit(1)
         data = got.json()
-        return data.get('token', data.get('access_token'))
+        return f"Bearer {data.get('token', data.get('access_token'))}"
 
     def _handle_token_auth_401(self, req, kwargs):
         params = requests.utils.parse_dict_header(req.headers['www-authenticate'])
         url = params['Bearer realm']
         del params['Bearer realm']
+
+        if self.url is None:
+            self.url = url
+            self.service = params['service']
 
         if self.pos is not None:
             req.request.body.seek(self.pos)
@@ -55,7 +68,7 @@ class GuessAuth2(GuessAuth, _Mixin):  # pylint: disable=too-few-public-methods
         if self.debug:
             self._print_response(req)
 
-        prep.headers['Authorization'] = f"Bearer {self._get_token(url, params)}"
+        prep.headers['Authorization'] = self.get_token(params)
         _r = req.connection.send(prep, **kwargs)
         _r.request = prep
         return _r
