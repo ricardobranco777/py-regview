@@ -48,6 +48,8 @@ def get_docker_credentials(registry):
     """
     Gets the credentials from ~/.docker/config.json
     """
+    if re.match(r"(?:https://)?registry-1\.docker\.io", registry):
+        registry = "https://index.docker.io/v1/"
     config_file = os.path.join(
         os.getenv("DOCKER_CONFIG", os.path.expanduser(os.path.join("~", ".docker"))),
         "config.json")

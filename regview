@@ -12,19 +12,38 @@ from getpass import getpass
 from shutil import get_terminal_size
 
 from _regview.docker_registry import DockerRegistry
+from _regview.dockerhub import DockerHub
 from _regview.utils import pretty_date, pretty_size
 from _regview import __version__
 
 
-class DockerRegistryInfo(DockerRegistry):
+def wrapper(registry, *args, **kwargs):
     """
-    Subclass of DockerRegistry
+    DockerRegistry Wrapper
     """
+    if re.match(r"(?:https://)?registry-1\.docker\.io$", registry):
+        return DockerHub(registry, *args, **kwargs)
+    return DockerRegistry(registry, *args, **kwargs)
+
+
+class DockerRegistryInfo:
+    """
+    DockerRegistry Info
+    """
+    def __init__(self, reg):
+        self.reg = reg
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.reg.__exit__(exc_type, exc_value, traceback)
+
     def get_info(self, repo, tag):
         """
         Get info from manifest v2
         """
-        manifest = self.get_manifest(repo, tag)
+        manifest = self.reg.get_manifest(repo, tag)
         if not manifest:
             return None
         info = {
@@ -37,7 +56,7 @@ class DockerRegistryInfo(DockerRegistry):
         """
         Print fat manifest
         """
-        fat_manifest = self.get_manifest(repo, tag, fat=True)
+        fat_manifest = self.reg.get_manifest(repo, tag, fat=True)
         if fat_manifest is None:
             sys.exit(1)
         elif fat_manifest['schemaVersion'] == 1:
@@ -61,7 +80,7 @@ class DockerRegistryInfo(DockerRegistry):
         info = self.get_info(repo, tag)
         if info is None:
             return
-        info.update(self.get_blob(repo, info['ID']).json())
+        info.update(self.reg.get_blob(repo, info['ID']).json())
         if not opts.raw:
             info['created'] = pretty_date(info['created'])
             info['CompressedSize'] = pretty_size(info['CompressedSize'])
@@ -111,13 +130,13 @@ class DockerRegistryInfo(DockerRegistry):
         Get images"
         """
         with ThreadPoolExecutor(max_workers=2) as executor:
-            yield from executor.map(lambda r: (r, self.get_tags(r, pattern_tag)), repos)
+            yield from executor.map(lambda r: (r, self.reg.get_tags(r, pattern_tag)), repos)
 
     def print_all(self, glob_repo, glob_tag):
         """
         Print all
         """
-        repos = self.get_repos(glob_repo)
+        repos = self.reg.get_repos(glob_repo)
         if not repos:
             sys.exit(0)
         keys = ["REPOSITORY:TAG", "IMAGE ID"]
@@ -145,7 +164,7 @@ class DockerRegistryInfo(DockerRegistry):
                 if opts.verbose:
                     digests = dict(
                         executor.map(
-                            lambda d, r=repo: (d, self.get_blob(r, d).json()),
+                            lambda d, r=repo: (d, self.reg.get_blob(r, d).json()),
                             {_['ID'] for _ in infos if _}))
                 for tag, info in zip(tags, infos):
                     if info is None:
@@ -221,12 +240,13 @@ def main():
     if '@' not in image and re.search(r"\*|\?|\[", image):
         glob_repo, glob_tag = image.split(':', 1) if ':' in image else (image, None)
     with DockerRegistryInfo(
+        wrapper(
             registry,
             auth=(opts.username, opts.password) if opts.username else None,
             cert=(opts.cert, opts.key) if opts.cert and opts.key else opts.cert,
             headers={'User-Agent': f"regview/{__version__}"},
             verify=opts.cacert if opts.cacert else not opts.insecure,
-            debug=opts.debug) as reg:
+            debug=opts.debug)) as reg:
         if image and not glob_repo:
             sep = '@' if '@' in image else ':'
             if opts.all and sep != '@':
