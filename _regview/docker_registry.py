@@ -7,6 +7,7 @@ import logging
 import sys
 
 from functools import lru_cache
+from urllib.parse import urlparse
 
 import requests
 from requests.exceptions import RequestException
@@ -105,6 +106,7 @@ class DockerRegistry:
         """
         Get paginated results
         """
+        host = "://".join(urlparse(url)[0:2])
         items = []
         while True:
             try:
@@ -116,7 +118,7 @@ class DockerRegistry:
             if 'Link' in got.headers:
                 url = requests.utils.parse_header_links(got.headers['Link'])[0]['url']
                 if url.startswith("/v2/"):
-                    url = f"{self.registry}{url}"
+                    url = f"{host}{url}"
             else:
                 break
         return items
