@@ -57,6 +57,9 @@ class GuessAuth2(GuessAuth):
             self.url = url
             self.service = params['service']
 
+        # Code adapted from:
+        # https://github.com/requests/toolbelt/blob/master/requests_toolbelt/auth/guess.py
+
         if self.pos is not None:
             req.request.body.seek(self.pos)
         # Consume content and release the original connection
@@ -64,6 +67,11 @@ class GuessAuth2(GuessAuth):
         _ = req.content
         req.raw.release_conn()
         prep = req.request.copy()
+        # pylint: disable=protected-access
+        if not hasattr(prep, '_cookies'):
+            prep._cookies = requests.cookies.RequestsCookieJar()  # pylint: disable=abstract-class-instantiated
+        requests.cookies.extract_cookies_to_jar(prep._cookies, req.request, req.raw)
+        prep.prepare_cookies(prep._cookies)
 
         if self.debug:
             print_response(req)
