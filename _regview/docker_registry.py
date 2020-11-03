@@ -37,7 +37,7 @@ class DockerRegistry:
             self.session.headers.update(headers)
         self.session.verify = verify
         disable_warnings()
-        self._fix_registry(registry)
+        self.registry = self._check_registry(registry)
 
     def __enter__(self):
         return self
@@ -54,7 +54,7 @@ class DockerRegistry:
         requests_log.propagate = True
         self.session.hooks['response'].append(print_response)
 
-    def _fix_registry(self, registry):
+    def _check_registry(self, registry):
         """
         Check if registry starts with a scheme and adjust accordingly
         """
@@ -65,23 +65,23 @@ class DockerRegistry:
             except RequestException as err:
                 logging.error("%s", err)
                 sys.exit(1)
-            self.registry = registry
-        else:
+            return registry
+        try:
+            got = self.session.get(f"https://{registry}/v2/")
+            got.raise_for_status()
+            return f"https://{registry}"
+        except RequestException:
             try:
-                got = self.session.get(f"https://{registry}/v2/")
+                got = self.session.get(f"http://{registry}/v2/")
                 got.raise_for_status()
-                self.registry = f"https://{registry}"
-            except RequestException:
-                try:
-                    got = self.session.get(f"http://{registry}/v2/")
-                    got.raise_for_status()
-                    self.registry = f"http://{registry}"
-                except RequestException as err:
-                    logging.error("%s", err)
-                    sys.exit(1)
+                return f"http://{registry}"
+            except RequestException as err:
+                logging.error("%s", err)
+                sys.exit(1)
         if got.headers.get('docker-distribution-api-version') != 'registry/2.0':
             logging.error("Invalid registry: %s", registry)
             sys.exit(1)
+        return None
 
     @lru_cache(maxsize=128)
     def _get_token_repo(self, repo):
