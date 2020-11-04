@@ -19,8 +19,7 @@ def print_response(got, *args, **kwargs):  # pylint: disable=unused-argument
     Print response to aid in debugging
     """
     got.hook_called = True
-    data = dump.dump_all(got)
-    print(data.decode('utf-8'))
+    print(dump.dump_all(got).decode('utf-8'))
     return got
 
 
@@ -51,8 +50,7 @@ def get_docker_credentials(registry):
     if re.match(r"(?:https://)?registry-1\.docker\.io", registry):
         registry = "https://index.docker.io/v1/"
     config_file = os.path.join(
-        os.getenv("DOCKER_CONFIG", os.path.expanduser(os.path.join("~", ".docker"))),
-        "config.json")
+        os.getenv("DOCKER_CONFIG", os.path.expanduser(os.path.join("~", ".docker"))), "config.json")
     try:
         with open(config_file) as file:
             config = json.load(file)
