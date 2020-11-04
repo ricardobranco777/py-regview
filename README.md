@@ -28,7 +28,6 @@ regview [OPTIONS] REGISTRY[/REPOSITORY[:TAG|@DIGEST]]
 
 ## Notes
 
-- Supported authentication methods: HTTP Basic, HTTP Digest & Token.
 - If only the registry is specified, `regview` will list all images and the `-v` (`--verbose`) option needs to fetch an additional manifest.
 - In listing mode, shell style pattern matching is supported in repositories and tags like `busybo?/late*` or `debian:[7-9]`.
 - If an image is specified, the `-v` (`--verbose`) option also displays the image's history.
@@ -40,6 +39,17 @@ regview [OPTIONS] REGISTRY[/REPOSITORY[:TAG|@DIGEST]]
 - requests
 - requests-toolbet
 - python-dateutil
+
+## Supported authentication methods
+
+- HTTP Basic Authentication
+- HTTP Digest Authentication
+- Token Authentication
+
+## Supported registries
+
+- Docker Distribution
+- Docker Hub (use `registry-1.docker.io` as the hostname)
 
 ## Bugs / Limitations
 
