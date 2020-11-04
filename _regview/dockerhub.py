@@ -70,3 +70,25 @@ class DockerHub(DockerRegistry):
         if repos and pattern:
             return fnmatch.filter(repos, pattern)
         return repos
+
+    def get_tags(self, repo, pattern=None):
+        """
+        Get tags
+        """
+        tags = []
+        url = f"https://hub.docker.com/v2/repositories/{repo}/tags/"
+        while True:
+            try:
+                got = self.session.get(url, headers={"Authorization": f"JWT {self.token}"})
+                got.raise_for_status()
+            except RequestException as err:
+                logging.error("%s: %s", url, err)
+                sys.exit(1)
+            data = got.json()
+            tags.extend([_['name'] for _ in data['results']])
+            if not data['next']:
+                break
+            url = data['next']
+        if tags and pattern:
+            return fnmatch.filter(tags, pattern)
+        return tags
