@@ -93,15 +93,6 @@ class DockerRegistry:
             return {"Authorization": token}
         return {}
 
-    def _get(self, url, **kwargs):
-        """
-        Cache tokens for repository URL's to avoid so many 401's
-        and calling the auth server that many times
-        """
-        got = self.session.get(url, **kwargs)
-        got.raise_for_status()
-        return got
-
     def _get_paginated(self, url, string, **kwargs):
         """
         Get paginated results
@@ -110,7 +101,8 @@ class DockerRegistry:
         items = []
         while True:
             try:
-                got = self._get(url, **kwargs)
+                got = self.session.get(url, **kwargs)
+                got.raise_for_status()
             except RequestException as err:
                 logging.error("%s: %s", url, err)
                 return None
@@ -157,7 +149,8 @@ class DockerRegistry:
         headers = self._get_token_repo(repo)
         headers.update({"Accept": content_type})
         try:
-            got = self._get(url, headers=headers)
+            got = self.session.get(url, headers=headers)
+            got.raise_for_status()
         except RequestException as err:
             fmt = "%s@%s: %s" if tag.startswith("sha256:") else "%s:%s: %s"
             logging.error(fmt, repo, tag, err)
@@ -174,7 +167,8 @@ class DockerRegistry:
         url = f"{self.registry}/v2/{repo}/blobs/{digest}"
         headers = self._get_token_repo(repo)
         try:
-            got = self._get(url, headers=headers)
+            got = self.session.get(url, headers=headers)
+            got.raise_for_status()
         except RequestException as err:
             logging.error("%s@%s: %s", repo, digest, err)
             return None
