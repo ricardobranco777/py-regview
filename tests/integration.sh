@@ -20,9 +20,9 @@ pass="testpass"
 
 cleanup () {
 	set +e
-	sudo docker rm -vf $name auth
+	sudo docker rm -vf $name
 	sudo docker rmi $image
-	sudo docker rmi localhost:$port/$image:latest
+	sudo docker rmi $(sudo docker images --format '{{.Repository}}:{{.Tag}}' localhost:$port/*)
 	rm -f $PWD/tests/config.json
 	rm -f $certs/*
 }
@@ -178,5 +178,27 @@ test_proto https
 # Test token cache
 test $($docker regview $options https://localhost:$port 2>/dev/null | grep -c " 401 ") -eq 1
 test $($docker regview $options https://localhost:$port/$image:latest 2>/dev/null | grep -c " 401 ") -eq 1
+
+sudo docker rm -vf $name auth
+
+echo "Testing pagination"
+
+sudo docker run -d \
+        --net=host \
+        --name $name \
+        -p $port:$port \
+        -e REGISTRY_HTTP_ADDR=0.0.0.0:$port \
+        -v /tmp/registry:/var/lib/registry \
+        registry:2
+sleep 5
+
+sed -ri '/self._get_paginated/s/(_catalog|list)/\1?n=1/' _regview/docker_registry.py
+
+for i in ${image}:test ${image}2:latest ${image}2:test ; do
+	sudo docker tag $image localhost:$port/$i
+	sudo docker push localhost:$port/$i
+done
+
+test $(regview -v http://localhost:$port | wc -l) -eq 5
 
 cleanup
