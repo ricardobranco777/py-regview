@@ -179,9 +179,4 @@ test_proto https
 test $($docker regview $options https://localhost:$port 2>/dev/null | grep -c " 401 ") -eq 1
 test $($docker regview $options https://localhost:$port/$image:latest 2>/dev/null | grep -c " 401 ") -eq 1
 
-echo "Testing DockerHub"
-
-docker="sudo docker run --rm --net=host"
-$docker regview --all registry-1.docker.io/library/debian:latest
-
 cleanup
