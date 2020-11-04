@@ -34,6 +34,27 @@ class DockerHub(DockerRegistry):
             self._token = got.json()['token']
         return self._token
 
+    # Note: Test adding "?page_size=1" to url
+    def _get_paginated(self, url, string=None, **kwargs):
+        """
+        Get paginated results
+        """
+        items = []
+        prefix = f"{string}/" if string else ""
+        while True:
+            try:
+                got = self.session.get(url, **kwargs)
+                got.raise_for_status()
+            except RequestException as err:
+                logging.error("%s: %s", url, err)
+                sys.exit(1)
+            data = got.json()
+            items.extend([f"{prefix}{_['name']}" for _ in data['results']])
+            if not data['next']:
+                break
+            url = data['next']
+        return items
+
     def get_namespaces(self):
         """
         Get namespaces
@@ -53,20 +74,10 @@ class DockerHub(DockerRegistry):
         Get repositories
         """
         repos = []
+        headers = {"Authorization": f"JWT {self.token}"}
         for namespace in self.get_namespaces():
             url = f"https://hub.docker.com/v2/repositories/{namespace}/"
-            while True:
-                try:
-                    got = self.session.get(url, headers={"Authorization": f"JWT {self.token}"})
-                    got.raise_for_status()
-                except RequestException as err:
-                    logging.error("%s: %s", url, err)
-                    sys.exit(1)
-                data = got.json()
-                repos.extend([f"{_['namespace']}/{_['name']}" for _ in data['results']])
-                if not data['next']:
-                    break
-                url = data['next']
+            repos.extend(self._get_paginated(url, namespace, headers=headers))
         if repos and pattern:
             return fnmatch.filter(repos, pattern)
         return repos
@@ -75,20 +86,9 @@ class DockerHub(DockerRegistry):
         """
         Get tags
         """
-        tags = []
         url = f"https://hub.docker.com/v2/repositories/{repo}/tags/"
-        while True:
-            try:
-                got = self.session.get(url, headers={"Authorization": f"JWT {self.token}"})
-                got.raise_for_status()
-            except RequestException as err:
-                logging.error("%s: %s", url, err)
-                sys.exit(1)
-            data = got.json()
-            tags.extend([_['name'] for _ in data['results']])
-            if not data['next']:
-                break
-            url = data['next']
+        headers = {"Authorization": f"JWT {self.token}"}
+        tags = self._get_paginated(url, headers=headers)
         if tags and pattern:
             return fnmatch.filter(tags, pattern)
         return tags
