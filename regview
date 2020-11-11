@@ -154,8 +154,6 @@ class DockerRegistryInfo:
         if opts.verbose:
             fmt += "  %s"
         print(fmt % tuple(keys))
-        if not repos:
-            sys.exit(1)
         with ThreadPoolExecutor() as executor:
             for repo, tags in self.get_images(repos, glob_tag):
                 if tags is None:
