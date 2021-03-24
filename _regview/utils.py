@@ -15,6 +15,13 @@ import dateutil.parser
 from requests_toolbelt.utils import dump
 
 
+def is_glob(string):
+    """
+    Returns True if string is a shell glob pattern
+    """
+    return bool(string and re.search(r"\*|\?|\[", string))
+
+
 def print_response(got, *args, **kwargs):  # pylint: disable=unused-argument
     """
     Print response to aid in debugging

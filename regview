@@ -12,7 +12,7 @@ from getpass import getpass
 from shutil import get_terminal_size
 
 from _regview.docker_registry import DockerRegistry
-from _regview.utils import pretty_date, pretty_size
+from _regview.utils import pretty_date, pretty_size, is_glob
 from _regview import __version__
 
 
@@ -113,11 +113,13 @@ class DockerRegistryInfo(DockerRegistry):
         with ThreadPoolExecutor(max_workers=2) as executor:
             yield from executor.map(lambda r: (r, self.get_tags(r, pattern_tag)), repos)
 
-    def print_all(self, glob_repo, glob_tag):
+    def print_all(self, repo_pattern, tag_pattern):
         """
         Print all
         """
-        repos = self.get_repos(glob_repo)
+        # Do not try to get the catalog when globbing only the tag
+        repos = self.get_repos(repo_pattern) if is_glob(repo_pattern) or repo_pattern is None \
+            else [repo_pattern]
         if not repos:
             sys.exit(0)
         keys = ["REPOSITORY:TAG", "IMAGE ID"]
@@ -136,7 +138,7 @@ class DockerRegistryInfo(DockerRegistry):
             fmt += "  %s"
         print(fmt % tuple(keys))
         with ThreadPoolExecutor() as executor:
-            for repo, tags in self.get_images(repos, glob_tag):
+            for repo, tags in self.get_images(repos, tag_pattern):
                 if tags is None:
                     continue
                 infos = list(executor.map(lambda t, r=repo: self.get_info(r, t), tags))
@@ -215,9 +217,9 @@ def main():
         opts.password = getpass("Password: ")
     match = re.match(r'((?:https?://)?[^:/]+(?::[0-9]+)?)/*(.*)', opts.image)
     registry, image = match.group(1), match.group(2)
-    glob_repo = glob_tag = None
-    if '@' not in image and re.search(r"\*|\?|\[", image):
-        glob_repo, glob_tag = image.split(':', 1) if ':' in image else (image, None)
+    pattern_repo = pattern_tag = None
+    if '@' not in image and is_glob(image):
+        pattern_repo, pattern_tag = image.split(':', 1) if ':' in image else (image, None)
     with DockerRegistryInfo(
             registry,
             auth=(opts.username, opts.password) if opts.username else None,
@@ -225,14 +227,14 @@ def main():
             headers={'User-Agent': f"regview/{__version__}"},
             verify=opts.cacert if opts.cacert else not opts.insecure,
             debug=opts.debug) as reg:
-        if image and not glob_repo:
+        if image and not pattern_repo:
             sep = '@' if '@' in image else ':'
             if opts.all and sep != '@':
                 reg.print_fat(*image.split(sep, 1))
             else:
                 reg.print_fullinfo(*image.split(sep, 1))
             return
-        reg.print_all(glob_repo, glob_tag)
+        reg.print_all(pattern_repo, pattern_tag)
 
 
 if __name__ == "__main__":
