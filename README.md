@@ -49,7 +49,10 @@ regview [OPTIONS] REGISTRY[/REPOSITORY[:TAG|@DIGEST]]
 ## Supported registries
 
 - Docker Distribution
-- ~~Docker Hub~~ Dropped due to stupid [rate limit](https://docs.docker.com/docker-hub/download-rate-limit/).
+- Amazon ECR (get credentials with `aws ecr get-login` and run `docker login`)
+- Azure ACR (get credentials with `az acr credential show -n` and run `docker login`)
+- Google GCR (run `gcloud auth configure-docker` and use `[ZONE.]gcr.io/<PROJECT>/*` to list the registry)
+- ~~Docker Hub~~ Dropped due to stupid [rate limit](https://docs.docker.com/docker-hub/download-rate-limit/). You can use `registry.hub.docker.com/<IMAGE>` though.
 
 ## Bugs / Limitations
 
@@ -61,3 +64,9 @@ regview [OPTIONS] REGISTRY[/REPOSITORY[:TAG|@DIGEST]]
 - Show all images for all platforms/architectures when listing the registry.
 - Debug TLS.
 - Support proxies?
+
+## Useful information
+
+- https://aws.amazon.com/blogs/compute/authenticating-amazon-ecr-repositories-for-docker-cli-with-credential-helper/
+- https://docs.microsoft.com/en-us/azure/container-registry/container-registry-faq
+- https://cloud.google.com/container-registry/docs/advanced-authentication
