@@ -68,7 +68,8 @@ class DockerRegistry:
             return registry
         try:
             got = self.session.get(f"https://{registry}/v2/")
-            got.raise_for_status()
+            if got.status_code != 401:
+                got.raise_for_status()
             return f"https://{registry}"
         except RequestException:
             try:
