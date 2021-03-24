@@ -49,7 +49,7 @@ regview [OPTIONS] REGISTRY[/REPOSITORY[:TAG|@DIGEST]]
 ## Supported registries
 
 - Docker Distribution
-- Docker Hub (use `registry-1.docker.io` as the hostname)
+- ~~Docker Hub~~ Dropped due to stupid [rate limit](https://docs.docker.com/docker-hub/download-rate-limit/).
 
 ## Bugs / Limitations
 
