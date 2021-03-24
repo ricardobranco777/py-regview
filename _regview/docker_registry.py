@@ -159,7 +159,15 @@ class DockerRegistry:
             return None
         manifest = got.json()
         if not fat:
-            manifest['docker-content-digest'] = got.headers['docker-content-digest']
+            manifest['docker-content-digest'] = got.headers.get('docker-content-digest')
+            # Some registries don't return this header and need an additional HEAD request
+            if not manifest['docker-content-digest']:
+                try:
+                    got = self.session.head(url, headers=headers)
+                    got.raise_for_status()
+                    manifest['docker-content-digest'] = got.headers['docker-content-digest']
+                except RequestException:
+                    pass
         return manifest
 
     def get_blob(self, repo, digest):
