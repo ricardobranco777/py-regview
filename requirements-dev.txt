@@ -1,3 +1,4 @@
+docker-pycreds
 python-dateutil
 requests
 requests-toolbelt

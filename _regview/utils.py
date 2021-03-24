@@ -9,6 +9,7 @@ import re
 
 from datetime import timezone
 
+import dockerpycreds
 import dateutil.parser
 
 from requests_toolbelt.utils import dump
@@ -61,4 +62,11 @@ def get_docker_credentials(registry):
             return tuple(base64.b64decode(auth).decode('utf-8').split(':', 1))
         except KeyError:
             pass
+    try:
+        if registry in config['credHelpers']:
+            store = dockerpycreds.Store(config['credHelpers'][registry])
+            creds = store.get(registry)
+            return creds['Username'], creds['Secret']
+    except KeyError:
+        pass
     return None
