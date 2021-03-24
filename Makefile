@@ -1,5 +1,5 @@
 test:
-	@pylint regview setup.py _regview/*.py tests/*.py --disable=duplicate-code
+	@pylint regview setup.py _regview/*.py tests/*.py
 	@flake8 regview setup.py _regview/*.py tests/*.py --ignore=E501
 	@TZ=Europe/Berlin LC_ALL=en_US.UTF-8 python3 -m unittest tests/*.py
 	@bash -n ./tests/integration.sh
