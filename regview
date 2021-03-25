@@ -121,7 +121,7 @@ class DockerRegistryInfo(DockerRegistry):
         repos = self.get_repos(repo_pattern) if is_glob(repo_pattern) or repo_pattern is None \
             else [repo_pattern]
         if not repos:
-            sys.exit(0)
+            return
         keys = ["REPOSITORY:TAG", "IMAGE ID"]
         if opts.digests:
             keys.insert(1, "DIGEST")
