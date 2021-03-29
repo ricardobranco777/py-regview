@@ -61,7 +61,6 @@ regview [OPTIONS] REGISTRY[/REPOSITORY[:TAG|@DIGEST]]
 
 ## TODO
 
-- Show all images for all platforms/architectures when listing the registry.
 - Debug TLS.
 - Support proxies?
 

@@ -171,6 +171,7 @@ class DockerRegistry:
                     pass
         return manifest
 
+    @lru_cache(maxsize=128)
     def get_blob(self, repo, digest):
         """
         Get blob for repo

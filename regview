@@ -7,6 +7,7 @@ import argparse
 import re
 import sys
 
+from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from getpass import getpass
 from shutil import get_terminal_size
@@ -20,10 +21,26 @@ class DockerRegistryInfo(DockerRegistry):
     """
     Subclass of DockerRegistry
     """
-    def get_info(self, repo, tag):
+    def get_info(self, repo, tag, fat=False):
         """
         Get info from manifest v2
         """
+        manifest = None
+        if fat:
+            content_type = 'application/vnd.docker.distribution.manifest.list.v2+json'
+            manifest = self.get_manifest(repo, tag, fat=True)
+            if manifest and manifest.get('mediaType') == content_type:
+                infos = []
+                for item in manifest['manifests']:
+                    info = self.get_info(repo, item['digest'])
+                    if not info:
+                        continue
+                    keys = ('architecture', 'os', 'variant')
+                    info.update({k: item['platform'][k] for k in keys if k in item['platform']})
+                    keys = ('features', 'os.features')
+                    info.update({k: ",".join(info[k]) for k in keys if k in info})
+                    infos.append(info)
+                return infos
         manifest = self.get_manifest(repo, tag)
         if not manifest:
             return None
@@ -37,19 +54,11 @@ class DockerRegistryInfo(DockerRegistry):
         """
         Print fat manifest
         """
-        fat_manifest = self.get_manifest(repo, tag, fat=True)
-        if fat_manifest is None:
-            sys.exit(1)
-        elif fat_manifest['schemaVersion'] == 1:
-            # Docker distribution may send a v1 when asked for a fat v2 that doesn't exist
+        infos = self.get_info(repo, tag, fat=True)
+        if not isinstance(infos, list):
             self.print_fullinfo(repo, tag)
             return
-        for item in fat_manifest['manifests']:
-            info = self.get_info(repo, item['digest'])
-            keys = ('architecture', 'os', 'variant')
-            info.update({key: item['platform'][key] for key in keys if key in item['platform']})
-            keys = ('features', 'os.features')
-            info.update({key: ",".join(info[key]) for key in keys if key in info})
+        for info in infos:
             for key, value in sorted(info.items()):
                 print(f"{key:<20}\t{value}")
             print()
@@ -104,6 +113,9 @@ class DockerRegistryInfo(DockerRegistry):
             if not opts.raw:
                 created = pretty_date(created)
             values.append(created)
+        if opts.all:
+            values.append(info.get('os', "-"))
+            values.append(info.get('architecture', "-"))
         print(fmt % tuple(values))
 
     def get_images(self, repos, pattern_tag=None):
@@ -122,37 +134,34 @@ class DockerRegistryInfo(DockerRegistry):
             else [repo_pattern]
         if not repos:
             return
-        keys = ["REPOSITORY:TAG", "IMAGE ID"]
-        if opts.digests:
-            keys.insert(1, "DIGEST")
-        if opts.verbose:
-            keys.append("CREATED ON")
         image_width = min(
             int(get_terminal_size().columns / 2),
             max(len(repo) for repo in repos) + 20)
-        fmt = f"%-{image_width}s"
-        if opts.digests:
-            fmt += "  %-72s"
-        fmt += "  %-72s" if opts.no_trunc else "  %-12s"
-        if opts.verbose:
-            fmt += "  %s"
+        fmt = OrderedDict({
+            "REPOSITORY:TAG": f"%-{image_width}s",
+            "IMAGE ID": "%-72s" if opts.no_trunc else "%-12s",
+            "DIGEST": "%-72s" if opts.digests else None,
+            "CREATED ON": "%-31s" if opts.verbose else None,
+            "OS": "%-8s" if opts.all else None,
+            "ARCH": "%s" if opts.all else None})
+        fmt = {k: fmt[k] for k in fmt if fmt[k]}
+        keys = fmt.keys()
+        fmt = "  ".join(fmt.values())
         print(fmt % tuple(keys))
         with ThreadPoolExecutor() as executor:
             for repo, tags in self.get_images(repos, tag_pattern):
                 if tags is None:
                     continue
-                infos = list(executor.map(lambda t, r=repo: self.get_info(r, t), tags))
-                if opts.verbose:
-                    digests = dict(
-                        executor.map(
-                            lambda d, r=repo: (d, self.get_blob(r, d).json()),
-                            {_['ID'] for _ in infos if _}))
+                infos = executor.map(lambda t, r=repo: self.get_info(r, t, fat=opts.all), tags)
                 for tag, info in zip(tags, infos):
-                    if info is None:
-                        continue
-                    if opts.verbose:
-                        info.update(digests[info['ID']])
-                    self.print_info(repo, tag, info, fmt)
+                    if not isinstance(info, list):
+                        info = [info]
+                    for info_ in info:
+                        if info_ is None:
+                            continue
+                        if opts.verbose:
+                            info_.update(self.get_blob(repo, info_['ID']).json())
+                        self.print_info(repo, tag, info_, fmt)
 
 
 def parse_opts():
