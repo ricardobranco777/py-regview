@@ -45,7 +45,7 @@ class DockerRegistryInfo(DockerRegistry):
             self.print_fullinfo(repo, tag)
             return
         for item in fat_manifest['manifests']:
-            info = self.get_info(repo, tag)
+            info = self.get_info(repo, item['digest'])
             keys = ('architecture', 'os', 'variant')
             info.update({key: item['platform'][key] for key in keys if key in item['platform']})
             keys = ('features', 'os.features')
