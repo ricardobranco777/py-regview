@@ -163,8 +163,11 @@ class DockerRegistryInfo(DockerRegistry):
                     for info_ in info:
                         if info_ is None:
                             continue
-                        if opts.verbose:
+                        if opts.all or opts.verbose:
                             info_.update(self.get_blob(repo, info_['ID']).json())
+                        if opts.arch and info_['architecture'] not in opts.arch or \
+                                opts.os and info_['os'] not in opts.os:
+                            continue
                         self.print_info(repo, tag, info_, fmt)
 
 
