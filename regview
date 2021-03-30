@@ -32,6 +32,9 @@ class DockerRegistryInfo(DockerRegistry):
             if manifest and manifest.get('mediaType') == content_type:
                 infos = []
                 for item in manifest['manifests']:
+                    if opts.arch and item['platform']['architecture'] not in opts.arch or \
+                            opts.os and item['platform']['os'] not in opts.os:
+                        continue
                     info = self.get_info(repo, item['digest'])
                     if not info:
                         continue
@@ -174,6 +177,16 @@ def parse_opts():
         '-a', '--all', action='store_true',
         help="Print information for all architectures")
     parser.add_argument(
+        '--arch', action='append',
+        choices=['386', 'amd64', 'arm', 'arm64', 'mips', 'mips64', 'mips64le',
+                 'mipsle', 'ppc64', 'ppc64le', 'riscv64', 's390x', 'wasm'],
+        help="Target architecture.  May be specified multiple times")
+    parser.add_argument(
+        '--os', action='append',
+        choices=['aix', 'android', 'darwin', 'dragonfly', 'freebsd', 'illumos', 'ios',
+                 'js', 'linux', 'netbsd', 'openbsd', 'plan9', 'solaris', 'windows'],
+        help="Target OS.  May be specified multiple times")
+    parser.add_argument(
         '-c', '--cert',
         help="Client certificate filename (may contain unencrypted key)")
     parser.add_argument(
@@ -225,6 +238,9 @@ def main():
         sys.exit(1)
     if opts.username and not opts.password:
         opts.password = getpass("Password: ")
+    if opts.arch or opts.os:
+        opts.arch, opts.os = set(opts.arch if opts.arch else []), set(opts.os if opts.os else [])
+        opts.all = True
     match = re.match(r'((?:https?://)?[^:/]+(?::[0-9]+)?)/*(.*)', opts.image)
     registry, image = match.group(1), match.group(2)
     pattern_repo = pattern_tag = None

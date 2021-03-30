@@ -10,6 +10,10 @@ View the contents of a Docker Registry v2
 regview [OPTIONS] REGISTRY[/REPOSITORY[:TAG|@DIGEST]]
   -h, --help            show this help message and exit
   -a, --all             Print information for all architectures
+  --arch {386,amd64,arm,arm64,mips,mips64,mips64le,mipsle,ppc64,ppc64le,riscv64,s390x,wasm}
+                        Target architecture. May be specified multiple times
+  --os {aix,android,darwin,dragonfly,freebsd,illumos,ios,js,linux,netbsd,openbsd,plan9,solaris,windows}
+                        Target OS. May be specified multiple times
   -c CERT, --cert CERT  Client certificate filename (may contain unencrypted key)
   -k KEY, --key KEY     Client private key filename (unencrypted)
   -C CACERT, --cacert CACERT
