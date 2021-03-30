@@ -33,8 +33,6 @@ set -xeE
 python_version=$(python3 --version | cut -d. -f2)
 sed -i "s/3\.9/3.$python_version/" Dockerfile
 
-sudo docker build -t $image .
-
 sudo docker run -d \
 	--net=host \
 	--name $name \
@@ -45,11 +43,16 @@ sudo docker run -d \
 
 sleep 5
 
-sudo docker tag $image localhost:$port/$image:latest
-sudo docker push localhost:$port/$image:latest
+# Used to test --all, --os & --arch options
+sudo docker buildx create --use --driver-opt network=host
+sudo docker buildx build --push --platform linux/amd64,linux/386 --tag localhost:$port/$image:latest .
+sudo docker pull localhost:$port/$image:latest
+sudo docker tag localhost:$port/$image:latest $image
 
 id=$(sudo docker images --no-trunc --format="{{.ID}}" localhost:$port/$image:latest)
 digest=$(sudo docker images --digests --format="{{.Digest}}" localhost:$port/$image)
+sudo docker images --digests
+regview --all --digests --verbose localhost:$port
 
 test_proto () {
 	proto="$1"
@@ -200,5 +203,11 @@ for i in ${image}:test ${image}2:latest ${image}2:test ; do
 done
 
 test $(regview -v http://localhost:$port | wc -l) -eq 5
+
+echo "Testing multi-arch"
+
+regview -a http://localhost:$port | grep -q "386$"
+regview --arch 386 http://localhost:$port | grep -q "386$"
+test $(regview --arch 386 http://localhost:$port | grep -c "amd64$") -eq 0
 
 cleanup
