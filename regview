@@ -143,8 +143,8 @@ class DockerRegistryInfo(DockerRegistry):
             max(len(repo) for repo in repos) + 20)
         fmt = OrderedDict({
             "REPOSITORY:TAG": f"%-{image_width}s",
-            "IMAGE ID": "%-72s" if opts.no_trunc else "%-12s",
             "DIGEST": "%-72s" if opts.digests else None,
+            "IMAGE ID": "%-72s" if opts.no_trunc else "%-12s",
             "CREATED ON": "%-31s" if opts.verbose else None,
             "OS": "%-8s" if opts.all else None,
             "ARCH": "%s" if opts.all else None})
