@@ -58,6 +58,12 @@ regview [OPTIONS] REGISTRY[/REPOSITORY[:TAG|@DIGEST]]
 - Google GCR (run `gcloud auth configure-docker` and use `[ZONE.]gcr.io/<PROJECT>/*` to list the registry)
 - ~~Docker Hub~~ Dropped due to stupid [rate limit](https://docs.docker.com/docker-hub/download-rate-limit/). You can use `registry.hub.docker.com/<IMAGE>` though.
 
+## Podman
+
+To use with [Podman](https://podman.io/):
+
+`alias podman=docker`
+
 ## Bugs / Limitations
 
 - The client key must be unencrypted until this [issue in Python Requests](https://github.com/psf/requests/issues/1573) is fixed.
