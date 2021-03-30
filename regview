@@ -41,7 +41,8 @@ class DockerRegistryInfo(DockerRegistry):
                     info.update({k: ",".join(info[k]) for k in keys if k in info})
                     infos.append(info)
                 return infos
-        manifest = self.get_manifest(repo, tag)
+        if not manifest:
+            manifest = self.get_manifest(repo, tag)
         if not manifest:
             return None
         info = {

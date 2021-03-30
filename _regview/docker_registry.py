@@ -147,8 +147,9 @@ class DockerRegistry:
         """
         url = f"{self.registry}/v2/{repo}/manifests/{tag}"
         content_type = "application/vnd.docker.distribution.manifest.v2+json"
+        content_type_fat = "application/vnd.docker.distribution.manifest.list.v2+json"
         if fat:
-            content_type = "application/vnd.docker.distribution.manifest.list.v2+json"
+            content_type += f",{content_type_fat}"
         headers = self._get_token_repo(repo)
         headers.update({"Accept": content_type})
         try:
@@ -159,7 +160,9 @@ class DockerRegistry:
             logging.error(fmt, repo, tag, err)
             return None
         manifest = got.json()
-        if not fat:
+        if manifest['schemaVersion'] != 2:
+            return None
+        if manifest['mediaType'] != content_type_fat:
             manifest['docker-content-digest'] = got.headers.get('docker-content-digest')
             # Some registries don't return this header and need an additional HEAD request
             if not manifest['docker-content-digest']:
