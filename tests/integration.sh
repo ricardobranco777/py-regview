@@ -51,8 +51,6 @@ sudo docker tag localhost:$port/$image:latest $image
 
 id=$(sudo docker images --no-trunc --format="{{.ID}}" localhost:$port/$image:latest)
 digest=$(sudo docker images --digests --format="{{.Digest}}" localhost:$port/$image)
-sudo docker images --digests
-regview --all --digests --verbose localhost:$port
 
 test_proto () {
 	proto="$1"

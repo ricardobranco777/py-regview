@@ -38,7 +38,7 @@ class DockerRegistryInfo(DockerRegistry):
                     continue
                 # Fix digest for multi-arch
                 info['Digest'] = manifest['docker-content-digest']
-                if not (opts.all or opts.arch or opts.os):
+                if not opts.all:
                     return info
                 keys = ('architecture', 'os', 'variant')
                 info.update({k: item['platform'][k] for k in keys if k in item['platform']})
@@ -55,28 +55,20 @@ class DockerRegistryInfo(DockerRegistry):
             'ID': manifest['config']['digest']}
         return info
 
-    def print_fat(self, repo, tag="latest"):
-        """
-        Print fat manifest
-        """
-        infos = self.get_info(repo, tag)
-        if not isinstance(infos, list):
-            self.print_fullinfo(repo, tag)
-            return
-        for info in infos:
-            for key, value in sorted(info.items()):
-                print(f"{key:<20}\t{value}")
-            print()
-
     def print_fullinfo(self, repo, tag="latest"):
         """
         Print full info about image
         """
-        info = self.get_info(repo, tag)
-        if info is None:
+        infos = self.get_info(repo, tag)
+        if infos is None:
             return
-        if isinstance(info, list):
-            self.print_fat(repo, tag)
+        if isinstance(infos, list):
+            for info in infos:
+                for key, value in sorted(info.items()):
+                    print(f"{key:<20}\t{value}")
+                print()
+            return
+        info = infos
         info.update(self.get_blob(repo, info['ID']).json())
         if not opts.raw:
             info['created'] = pretty_date(info['created'])
@@ -159,19 +151,19 @@ class DockerRegistryInfo(DockerRegistry):
             for repo, tags in self.get_images(repos, tag_pattern):
                 if tags is None:
                     continue
-                infos = executor.map(lambda t, r=repo: self.get_info(r, t), tags)
-                for tag, info in zip(tags, infos):
-                    if not isinstance(info, list):
-                        info = [info]
-                    for info_ in info:
-                        if info_ is None:
+                infox = executor.map(lambda t, r=repo: self.get_info(r, t), tags)
+                for tag, infos in zip(tags, infox):
+                    if not isinstance(infos, list):
+                        infos = [infos]
+                    for info in infos:
+                        if info is None:
                             continue
                         if opts.all or opts.verbose:
-                            info_.update(self.get_blob(repo, info_['ID']).json())
-                        if opts.arch and info_['architecture'] not in opts.arch or \
-                                opts.os and info_['os'] not in opts.os:
+                            info.update(self.get_blob(repo, info['ID']).json())
+                        if opts.arch and info['architecture'] not in opts.arch or \
+                                opts.os and info['os'] not in opts.os:
                             continue
-                        self.print_info(repo, tag, info_, fmt)
+                        self.print_info(repo, tag, info, fmt)
 
 
 def parse_opts():
@@ -261,10 +253,7 @@ def main():
             debug=opts.debug) as reg:
         if image and not pattern_repo:
             sep = '@' if '@' in image else ':'
-            if opts.all and sep != '@':
-                reg.print_fat(*image.split(sep, 1))
-            else:
-                reg.print_fullinfo(*image.split(sep, 1))
+            reg.print_fullinfo(*image.split(sep, 1))
             return
         reg.print_all(pattern_repo, pattern_tag)
 
