@@ -162,16 +162,15 @@ class DockerRegistry:
         manifest = got.json()
         if manifest['schemaVersion'] != 2:
             return None
-        if manifest['mediaType'] != content_type_fat:
-            manifest['docker-content-digest'] = got.headers.get('docker-content-digest')
-            # Some registries don't return this header and need an additional HEAD request
-            if not manifest['docker-content-digest']:
-                try:
-                    got = self.session.head(url, headers=headers)
-                    got.raise_for_status()
-                    manifest['docker-content-digest'] = got.headers['docker-content-digest']
-                except RequestException:
-                    pass
+        manifest['docker-content-digest'] = got.headers.get('docker-content-digest')
+        # Some registries don't return this header and need an additional HEAD request
+        if not manifest['docker-content-digest']:
+            try:
+                got = self.session.head(url, headers=headers)
+                got.raise_for_status()
+                manifest['docker-content-digest'] = got.headers['docker-content-digest']
+            except RequestException:
+                pass
         return manifest
 
     @lru_cache(maxsize=128)

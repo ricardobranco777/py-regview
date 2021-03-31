@@ -21,31 +21,32 @@ class DockerRegistryInfo(DockerRegistry):
     """
     Subclass of DockerRegistry
     """
-    def get_info(self, repo, tag, fat=False):
+    def get_info(self, repo, tag):
         """
         Get info from manifest v2
         """
-        manifest = None
-        if fat:
-            content_type = 'application/vnd.docker.distribution.manifest.list.v2+json'
-            manifest = self.get_manifest(repo, tag, fat=True)
-            if manifest and manifest.get('mediaType') == content_type:
-                infos = []
-                for item in manifest['manifests']:
-                    if opts.arch and item['platform']['architecture'] not in opts.arch or \
-                            opts.os and item['platform']['os'] not in opts.os:
-                        continue
-                    info = self.get_info(repo, item['digest'])
-                    if not info:
-                        continue
-                    keys = ('architecture', 'os', 'variant')
-                    info.update({k: item['platform'][k] for k in keys if k in item['platform']})
-                    keys = ('features', 'os.features')
-                    info.update({k: ",".join(info[k]) for k in keys if k in info})
-                    infos.append(info)
-                return infos
-        if not manifest:
-            manifest = self.get_manifest(repo, tag)
+        content_type_fat = 'application/vnd.docker.distribution.manifest.list.v2+json'
+        manifest = self.get_manifest(repo, tag, fat=True)
+        if manifest and manifest.get('mediaType') == content_type_fat:
+            infos = []
+            for item in manifest['manifests']:
+                if opts.arch and item['platform']['architecture'] not in opts.arch or \
+                        opts.os and item['platform']['os'] not in opts.os:
+                    continue
+                info = self.get_info(repo, item['digest'])
+                if not info:
+                    continue
+                # Fix digest for multi-arch
+                info['Digest'] = manifest['docker-content-digest']
+                if not (opts.all or opts.arch or opts.os):
+                    return info
+                keys = ('architecture', 'os', 'variant')
+                info.update({k: item['platform'][k] for k in keys if k in item['platform']})
+                keys = ('features', 'os.features')
+                info.update({k: ",".join(info[k]) for k in keys if k in info})
+                infos.append(info)
+            return infos
+        manifest = self.get_manifest(repo, tag)
         if not manifest:
             return None
         info = {
@@ -58,7 +59,7 @@ class DockerRegistryInfo(DockerRegistry):
         """
         Print fat manifest
         """
-        infos = self.get_info(repo, tag, fat=True)
+        infos = self.get_info(repo, tag)
         if not isinstance(infos, list):
             self.print_fullinfo(repo, tag)
             return
@@ -74,6 +75,8 @@ class DockerRegistryInfo(DockerRegistry):
         info = self.get_info(repo, tag)
         if info is None:
             return
+        if isinstance(info, list):
+            self.print_fat(repo, tag)
         info.update(self.get_blob(repo, info['ID']).json())
         if not opts.raw:
             info['created'] = pretty_date(info['created'])
@@ -156,7 +159,7 @@ class DockerRegistryInfo(DockerRegistry):
             for repo, tags in self.get_images(repos, tag_pattern):
                 if tags is None:
                     continue
-                infos = executor.map(lambda t, r=repo: self.get_info(r, t, fat=opts.all), tags)
+                infos = executor.map(lambda t, r=repo: self.get_info(r, t), tags)
                 for tag, info in zip(tags, infos):
                     if not isinstance(info, list):
                         info = [info]
