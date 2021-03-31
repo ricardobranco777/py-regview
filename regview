@@ -9,6 +9,7 @@ import sys
 
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
 from getpass import getpass
 from shutil import get_terminal_size
 
@@ -21,19 +22,31 @@ class DockerRegistryInfo(DockerRegistry):
     """
     Subclass of DockerRegistry
     """
+
+    @lru_cache(maxsize=128)
+    def get_info_digest(self, repo, digest):
+        """
+        Cached version of get_info() for digests
+        """
+        return self.get_info(repo, digest)
+
     def get_info(self, repo, tag):
         """
         Get info from manifest v2
         """
         content_type_fat = 'application/vnd.docker.distribution.manifest.list.v2+json'
         manifest = self.get_manifest(repo, tag, fat=True)
+        if not manifest:
+            manifest = self.get_manifest(repo, tag)
+            if not manifest:
+                return None
         if manifest and manifest.get('mediaType') == content_type_fat:
             infos = []
             for item in manifest['manifests']:
                 if opts.arch and item['platform']['architecture'] not in opts.arch or \
                         opts.os and item['platform']['os'] not in opts.os:
                     continue
-                info = self.get_info(repo, item['digest'])
+                info = self.get_info_digest(repo, item['digest'])
                 if not info:
                     continue
                 # Fix digest for multi-arch
@@ -46,9 +59,6 @@ class DockerRegistryInfo(DockerRegistry):
                 info.update({k: ",".join(info[k]) for k in keys if k in info})
                 infos.append(info)
             return infos
-        manifest = self.get_manifest(repo, tag)
-        if not manifest:
-            return None
         info = {
             'Digest': tag if tag.startswith("sha256:") else manifest['docker-content-digest'],
             'CompressedSize': sum([_['size'] for _ in manifest['layers']]),
@@ -113,8 +123,8 @@ class DockerRegistryInfo(DockerRegistry):
                 created = pretty_date(created)
             values.append(created)
         if opts.all:
-            values.append(info.get('os', "-"))
-            values.append(info.get('architecture', "-"))
+            values.append(info['os'])
+            values.append(info['architecture'])
         print(fmt % tuple(values))
 
     def get_images(self, repos, pattern_tag=None):
@@ -160,9 +170,9 @@ class DockerRegistryInfo(DockerRegistry):
                             continue
                         if opts.all or opts.verbose:
                             info.update(self.get_blob(repo, info['ID']).json())
-                        if opts.arch and info['architecture'] not in opts.arch or \
-                                opts.os and info['os'] not in opts.os:
-                            continue
+                            if opts.arch and info['architecture'] not in opts.arch or \
+                                    opts.os and info['os'] not in opts.os:
+                                continue
                         self.print_info(repo, tag, info, fmt)
 
 
