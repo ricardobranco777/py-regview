@@ -65,6 +65,9 @@ class DockerRegistryInfo(DockerRegistry):
             'ID': manifest['config']['digest']}
         if full:
             info.update(self.get_blob(repo, info['ID']).json())
+            if not opts.raw:
+                info['created'] = pretty_date(info['created'])
+                info['CompressedSize'] = pretty_size(info['CompressedSize'])
         return info
 
     def print_fullinfo(self, repo, tag="latest"):
@@ -77,13 +80,12 @@ class DockerRegistryInfo(DockerRegistry):
         if isinstance(infos, list):
             for info in infos:
                 for key, value in sorted(info.items()):
+                    if key in {"config", "history", "rootfs"}:
+                        continue
                     print(f"{key:<20}\t{value}")
                 print()
             return
         info = infos
-        if not opts.raw:
-            info['created'] = pretty_date(info['created'])
-            info['CompressedSize'] = pretty_size(info['CompressedSize'])
         keys = (
             'architecture', 'author', 'created', 'docker_version', 'os',
             'CompressedSize', 'ID', 'Digest')
@@ -120,8 +122,6 @@ class DockerRegistryInfo(DockerRegistry):
             values.insert(1, info['Digest'])
         if opts.verbose:
             created = info['created']
-            if not opts.raw:
-                created = pretty_date(created)
             values.append(created)
         if opts.all:
             values.append(info['os'])
