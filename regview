@@ -151,7 +151,7 @@ class DockerRegistryInfo(DockerRegistry):
             "REPOSITORY:TAG": f"%-{image_width}s",
             "DIGEST": "%-72s" if opts.digests else None,
             "IMAGE ID": "%-72s" if opts.no_trunc else "%-12s",
-            "CREATED ON": "%-31s" if opts.verbose else None,
+            "CREATED": "%-31s" if opts.verbose else None,
             "OS": "%-8s" if opts.all else None,
             "ARCH": "%s" if opts.all else None})
         fmt = {k: fmt[k] for k in fmt if fmt[k]}
