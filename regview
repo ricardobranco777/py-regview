@@ -24,13 +24,13 @@ class DockerRegistryInfo(DockerRegistry):
     """
 
     @lru_cache(maxsize=128)
-    def get_info_digest(self, repo, digest):
+    def get_info_digest(self, repo, digest, full=False):
         """
         Cached version of get_info() for digests
         """
-        return self.get_info(repo, digest)
+        return self.get_info(repo, digest, full)
 
-    def get_info(self, repo, tag):
+    def get_info(self, repo, tag, full=False):
         """
         Get info from manifest v2
         """
@@ -46,7 +46,7 @@ class DockerRegistryInfo(DockerRegistry):
                 if opts.arch and item['platform']['architecture'] not in opts.arch or \
                         opts.os and item['platform']['os'] not in opts.os:
                     continue
-                info = self.get_info_digest(repo, item['digest'])
+                info = self.get_info_digest(repo, item['digest'], full)
                 if not info:
                     continue
                 # Fix digest for multi-arch
@@ -63,13 +63,15 @@ class DockerRegistryInfo(DockerRegistry):
             'Digest': tag if tag.startswith("sha256:") else manifest['docker-content-digest'],
             'CompressedSize': sum([_['size'] for _ in manifest['layers']]),
             'ID': manifest['config']['digest']}
+        if full:
+            info.update(self.get_blob(repo, info['ID']).json())
         return info
 
     def print_fullinfo(self, repo, tag="latest"):
         """
         Print full info about image
         """
-        infos = self.get_info(repo, tag)
+        infos = self.get_info(repo, tag, full=True)
         if infos is None:
             return
         if isinstance(infos, list):
@@ -79,7 +81,6 @@ class DockerRegistryInfo(DockerRegistry):
                 print()
             return
         info = infos
-        info.update(self.get_blob(repo, info['ID']).json())
         if not opts.raw:
             info['created'] = pretty_date(info['created'])
             info['CompressedSize'] = pretty_size(info['CompressedSize'])
@@ -157,22 +158,21 @@ class DockerRegistryInfo(DockerRegistry):
         keys = fmt.keys()
         fmt = "  ".join(fmt.values())
         print(fmt % tuple(keys))
+        full = opts.all or opts.verbose
         with ThreadPoolExecutor() as executor:
             for repo, tags in self.get_images(repos, tag_pattern):
                 if tags is None:
                     continue
-                infox = executor.map(lambda t, r=repo: self.get_info(r, t), tags)
+                infox = executor.map(lambda t, r=repo: self.get_info(r, t, full=full), tags)
                 for tag, infos in zip(tags, infox):
                     if not isinstance(infos, list):
                         infos = [infos]
                     for info in infos:
                         if info is None:
                             continue
-                        if opts.all or opts.verbose:
-                            info.update(self.get_blob(repo, info['ID']).json())
-                            if opts.arch and info['architecture'] not in opts.arch or \
-                                    opts.os and info['os'] not in opts.os:
-                                continue
+                        if opts.arch and info['architecture'] not in opts.arch or \
+                                opts.os and info['os'] not in opts.os:
+                            continue
                         self.print_info(repo, tag, info, fmt)
 
 
