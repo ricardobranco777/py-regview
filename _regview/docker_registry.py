@@ -107,7 +107,10 @@ class DockerRegistry:
             except RequestException as err:
                 logging.error("%s: %s", url, err)
                 return None
-            items.extend(got.json()[string])
+            more_items = got.json()[string]
+            if not more_items:
+                break
+            items.extend(more_items)
             if 'Link' in got.headers:
                 url = requests.utils.parse_header_links(got.headers['Link'])[0]['url']
                 if url.startswith("/v2/"):
