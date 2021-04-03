@@ -60,13 +60,12 @@ class DockerRegistryInfo(DockerRegistry):
         """
         Get info from manifest v2
         """
-        content_type_fat = 'application/vnd.docker.distribution.manifest.list.v2+json'
         manifest = self.get_manifest(repo, tag, fat=True)
         if not manifest:
             manifest = self.get_manifest(repo, tag)
             if not manifest:
                 return None
-        if manifest and manifest.get('mediaType') == content_type_fat:
+        if manifest and manifest.get('mediaType') == self.MANIFEST_V2_FAT:
             infos = []
             for item in manifest['manifests']:
                 if opts.arch and item['platform']['architecture'] not in opts.arch or \

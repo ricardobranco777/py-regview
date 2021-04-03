@@ -21,6 +21,9 @@ class DockerRegistry:
     """
     Class to implement Docker Registry methods
     """
+    MANIFEST_V2 = "application/vnd.docker.distribution.manifest.v2+json"
+    MANIFEST_V2_FAT = "application/vnd.docker.distribution.manifest.list.v2+json"
+
     def __init__(self, registry, auth=None, cert=None, headers=None, verify=True, debug=False):  # pylint: disable=too-many-arguments
         self.session = requests.Session()
         self.session.mount("http://", requests.adapters.HTTPAdapter(pool_maxsize=100))
@@ -150,10 +153,9 @@ class DockerRegistry:
         Get the manifest
         """
         url = f"{self.registry}/v2/{repo}/manifests/{tag}"
-        content_type = "application/vnd.docker.distribution.manifest.v2+json"
-        content_type_fat = "application/vnd.docker.distribution.manifest.list.v2+json"
+        content_type = self.MANIFEST_V2
         if fat:
-            content_type += f",{content_type_fat}"
+            content_type += f",{self.MANIFEST_V2_FAT}"
         headers = self._get_token_repo(repo)
         headers.update({"Accept": content_type})
         try:
@@ -182,7 +184,7 @@ class DockerRegistry:
         Get digest
         """
         url = f"{self.registry}/v2/{repo}/manifests/{tag}"
-        content_type = "application/vnd.docker.distribution.manifest.v2+json"
+        content_type = self.MANIFEST_V2
         headers = self._get_token_repo(repo)
         headers.update({"Accept": content_type})
         try:
@@ -198,7 +200,7 @@ class DockerRegistry:
         Delete digest
         """
         url = f"{self.registry}/v2/{repo}/manifests/{digest}"
-        content_type = "application/vnd.docker.distribution.manifest.v2+json"
+        content_type = self.MANIFEST_V2
         headers = self._get_token_repo(repo, "delete")
         headers.update({"Accept": content_type})
         try:
