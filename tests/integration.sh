@@ -208,4 +208,29 @@ regview -a http://localhost:$port | grep -q "386$"
 regview --arch 386 http://localhost:$port | grep -q "386$"
 test $(regview --arch 386 http://localhost:$port | grep -c "amd64$") -eq 0
 
+echo "Testing --delete"
+
+echo testing > testing
+cat > /tmp/Dockerfile << EOF
+FROM scratch
+COPY testing .
+EOF
+
+sudo docker rm -vf $name
+sudo docker run -d \
+        --net=host \
+        --name $name \
+        -p $port:$port \
+        -e REGISTRY_HTTP_ADDR=0.0.0.0:$port \
+        -e REGISTRY_STORAGE_DELETE_ENABLED=true \
+        -v /tmp/registry:/var/lib/registry \
+        registry:2
+sudo docker build -t localhost:$port/testing -f /tmp/Dockerfile .
+rm -f testing
+sudo docker push localhost:$port/testing
+regview --delete --dry-run http://localhost:$port/testing:latest
+regview --delete --verbose http://localhost:$port/testing:latest
+sudo docker restart $name
+test $(regview http://localhost:$port | grep -c testing) -eq 0
+
 cleanup
