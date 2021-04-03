@@ -85,12 +85,13 @@ class DockerRegistry:
         return None
 
     @lru_cache(maxsize=128)
-    def _get_token_repo(self, repo):
+    def _get_token_repo(self, repo, operations="pull"):
         """
         Get token for repo
+        Note: operations should be a comma separated string of "pull", "push" or "delete"
         """
         if self.session.auth and self.session.auth.url:
-            token = self.session.auth.get_token(params={"scope": f"repository:{repo}:pull"})
+            token = self.session.auth.get_token(params={"scope": f"repository:{repo}:{operations}"})
             return {"Authorization": token}
         return {}
 
@@ -175,6 +176,38 @@ class DockerRegistry:
             except RequestException:
                 pass
         return manifest
+
+    def get_digest(self, repo, tag):
+        """
+        Get digest
+        """
+        url = f"{self.registry}/v2/{repo}/manifests/{tag}"
+        content_type = "application/vnd.docker.distribution.manifest.v2+json"
+        headers = self._get_token_repo(repo)
+        headers.update({"Accept": content_type})
+        try:
+            got = self.session.head(url, headers=headers)
+            got.raise_for_status()
+            return got.headers.get('docker-content-digest')
+        except RequestException as err:
+            logging.error("%s:%s: %s", repo, tag, err)
+        return None
+
+    def delete(self, repo, digest):
+        """
+        Delete digest
+        """
+        url = f"{self.registry}/v2/{repo}/manifests/{digest}"
+        content_type = "application/vnd.docker.distribution.manifest.v2+json"
+        headers = self._get_token_repo(repo, "delete")
+        headers.update({"Accept": content_type})
+        try:
+            got = self.session.delete(url, headers=headers)
+            got.raise_for_status()
+            return True
+        except RequestException as err:
+            logging.error("%s@%s: %s", repo, digest, err)
+        return False
 
     @lru_cache(maxsize=128)
     def get_blob(self, repo, digest):

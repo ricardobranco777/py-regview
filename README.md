@@ -28,6 +28,8 @@ regview [OPTIONS] REGISTRY[/REPOSITORY[:TAG|@DIGEST]]
                         Password for authentication
   -v, --verbose         Show more information
   -V, --version         Show version and exit
+  --delete              Delete images. USE WITH CAUTION!
+  --dry-run             Used with --delete: only show the images that would be deleted
 ```
 
 ## Notes
@@ -57,6 +59,23 @@ regview [OPTIONS] REGISTRY[/REPOSITORY[:TAG|@DIGEST]]
 - Azure ACR (get credentials with `az acr credential show -n` and run `docker login`)
 - Google GCR (run `gcloud auth configure-docker` and use `[ZONE.]gcr.io/<PROJECT>/*` to list the registry)
 - ~~Docker Hub~~ Dropped due to stupid [rate limit](https://docs.docker.com/docker-hub/download-rate-limit/). You can use `registry.hub.docker.com/<IMAGE>` though.
+
+## Deleting images
+
+To delete tagged images you can use the `--delete` option.  Use the `--dry-run` option is you want to view the images that would be deleted.
+
+Steps:
+1. Either stop or restart the registry cointainer in maintenance (read-only) mode by setting the `REGISTRY_STORAGE_MAINTENANCE_READONLY` environment variable to `true` (or editing the relevant entry in `/etc/docker/registry/config.yml`).
+1. Run `regview --delete ...`
+1. Run `docker run --rm --volumes-from $CONTAINER registry:2 garbage-collect /etc/docker/registry/config.yml` if the container was stopped. Otherwise `docker exec $CONTAINER garbage-collect /etc/docker/registry/config.yml` if the container is in maintenance mode.
+1. Optionally run the same command from above appending `--delete-untagged` to delete untagged images.
+1. Restart the registry container in production mode.
+
+NOTES:
+- The above commands assume that the volume containing the registry filesystem is mounted at `/var/lib/registry` in the registry container.
+- The `-m` (`--delete-untagged`) option was added to Docker Registry 2.7.0
+- The `-m` (`--delete-untagged`) option is [BUGGY](https://github.com/distribution/distribution/issues/3178) with multi-arch images. The only workaround is to push those images independently adding the archictecture name to the tag.
+- USE AT YOUR OWN RISK!
 
 ## Podman
 

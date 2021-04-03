@@ -167,6 +167,25 @@ class DockerRegistryInfo(DockerRegistry):
         with ThreadPoolExecutor(max_workers=2) as executor:
             yield from executor.map(lambda r: (r, self.get_tags(r, pattern_tag)), repos)
 
+    def delete_images(self, repo_pattern, tag_pattern):
+        """
+        Delete images
+        """
+        # Do not try to get the catalog when globbing only the tag
+        repos = self.get_repos(repo_pattern) if is_glob(repo_pattern) or repo_pattern is None \
+            else [repo_pattern]
+        if not repos:
+            return
+        for repo in repos:
+            tags = self.get_tags(repo, tag_pattern)
+            with ThreadPoolExecutor() as executor:
+                digests = executor.map(lambda t, r=repo: self.get_digest(r, t), tags)
+                for digest in digests:
+                    if opts.dry_run or opts.verbose:
+                        print(f"{repo}@{digest}")
+                    if not opts.dry_run:
+                        self.delete(repo, digest)
+
     def print_all(self, repo_pattern, tag_pattern):
         """
         Print all
@@ -256,6 +275,12 @@ def parse_opts():
         '-v', '--verbose', action='store_true',
         help="Show more information")
     parser.add_argument(
+        '--delete', action='store_true',
+        help="Delete images. USE WITH CAUTION!")
+    parser.add_argument(
+        '--dry-run', action='store_true',
+        help="Used with --delete: only show the images that would be deleted")
+    parser.add_argument(
         '-V', '--version', action='store_true',
         help="Show version and exit")
     parser.add_argument('image', nargs='?', help="REGISTRY[/REPOSITORY[:TAG|@DIGEST]]")
@@ -291,9 +316,15 @@ def main():
             debug=opts.debug) as reg:
         if image and not pattern_repo:
             sep = '@' if '@' in image else ':'
-            reg.print_fullinfo(*image.split(sep, 1))
-            return
-        reg.print_all(pattern_repo, pattern_tag)
+            if opts.delete:
+                reg.delete_images(*image.split(sep, 1))
+            else:
+                reg.print_fullinfo(*image.split(sep, 1))
+        else:
+            if opts.delete:
+                reg.delete_images(pattern_repo, pattern_tag)
+            else:
+                reg.print_all(pattern_repo, pattern_tag)
 
 
 if __name__ == "__main__":
