@@ -103,7 +103,6 @@ class DockerRegistry:
         Get paginated results
         """
         host = "://".join(urlparse(url)[0:2])
-        items = []
         while True:
             try:
                 got = self.session.get(url, **kwargs)
@@ -111,17 +110,16 @@ class DockerRegistry:
             except RequestException as err:
                 logging.error("%s: %s", url, err)
                 return None
-            more_items = got.json()[string]
-            if not more_items:
-                break
-            items.extend(more_items)
+            items = got.json()[string]
+            if not items:
+                return None
+            yield from items
             if 'Link' in got.headers:
                 url = requests.utils.parse_header_links(got.headers['Link'])[0]['url']
                 if url.startswith("/v2/"):
                     url = f"{host}{url}"
             else:
                 break
-        return items
 
     def get_repos(self, pattern=None):
         """

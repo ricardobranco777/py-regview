@@ -30,7 +30,6 @@ def get_os_arch():
     """
     Get GOOS & GOARCH
     """
-    os_ = platform.system().lower()
     arch = platform.machine().lower()
     # Fix arch
     if arch == "x86_64":
@@ -41,7 +40,7 @@ def get_os_arch():
         arch = "arm64"
     elif arch == "armv7l":
         arch = "arm"
-    return os_, arch
+    return platform.system().lower(), arch
 
 
 class DockerRegistryInfo(DockerRegistry):
@@ -201,9 +200,7 @@ class DockerRegistryInfo(DockerRegistry):
             else [repo_pattern]
         if not repos:
             return
-        image_width = min(
-            int(get_terminal_size().columns / 2),
-            max(len(repo) for repo in repos) + 20)
+        image_width = int(get_terminal_size().columns / 2)
         fmt = OrderedDict({
             "REPOSITORY:TAG": f"%-{image_width}s",
             "DIGEST": "%-72s" if opts.digests else None,
@@ -220,8 +217,8 @@ class DockerRegistryInfo(DockerRegistry):
             for repo, tags in self.get_images(repos, tag_pattern):
                 if tags is None:
                     continue
-                infox = executor.map(lambda t, r=repo: self.get_info(r, t, full=full), tags)
-                for tag, infos in zip(tags, infox):
+                for tag, infos in executor.map(
+                        lambda t, r=repo: (t, self.get_info(r, t, full=full)), tags):
                     if not isinstance(infos, list):
                         infos = [infos]
                     for info in infos:
