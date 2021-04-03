@@ -65,8 +65,9 @@ regview [OPTIONS] REGISTRY[/REPOSITORY[:TAG|@DIGEST]]
 To delete tagged images you can use the `--delete` option.  Use the `--dry-run` option is you want to view the images that would be deleted.
 
 Steps:
-1. Either stop or restart the registry cointainer in maintenance (read-only) mode by setting the `REGISTRY_STORAGE_MAINTENANCE_READONLY` environment variable to `true` (or editing the relevant entry in `/etc/docker/registry/config.yml`).
+1. Make sure that the registry container has the `REGISTRY_STORAGE_DELETE_ENABLED` environment variable (or relevant entry in `/etc/docker/registry/config.yml`) set to `true`.
 1. Run `regview --delete ...`
+1. Either stop or restart the registry cointainer in maintenance (read-only) mode by setting the `REGISTRY_STORAGE_MAINTENANCE_READONLY` environment variable to `true` (or editing the relevant entry in `/etc/docker/registry/config.yml`).
 1. Run `docker run --rm --volumes-from $CONTAINER registry:2 garbage-collect /etc/docker/registry/config.yml` if the container was stopped. Otherwise `docker exec $CONTAINER garbage-collect /etc/docker/registry/config.yml` if the container is in maintenance mode.
 1. Optionally run the same command from above appending `--delete-untagged` to delete untagged images.
 1. Restart the registry container in production mode.
