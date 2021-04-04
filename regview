@@ -56,6 +56,13 @@ class DockerRegistryInfo(DockerRegistry):
         """
         return self.get_info(repo, digest, full)
 
+    @lru_cache(maxsize=128)
+    def get_blob_cached(self, repo, digest):
+        """
+        Cached version of get_blob()
+        """
+        return self.get_blob(repo, digest)
+
     def get_info(self, repo, tag, full=False):
         """
         Get info from manifest v2
@@ -89,7 +96,7 @@ class DockerRegistryInfo(DockerRegistry):
             'CompressedSize': sum([_['size'] for _ in manifest['layers']]),
             'ID': manifest['config']['digest']}
         if full:
-            info.update(self.get_blob(repo, info['ID']).json())
+            info.update(self.get_blob_cached(repo, info['ID']).json())
             if not opts.raw:
                 info['created'] = pretty_date(info['created'])
                 info['CompressedSize'] = pretty_size(info['CompressedSize'])

@@ -211,7 +211,6 @@ class DockerRegistry:
             logging.error("%s@%s: %s", repo, digest, err)
         return False
 
-    @lru_cache(maxsize=128)
     def get_blob(self, repo, digest):
         """
         Get blob for repo
