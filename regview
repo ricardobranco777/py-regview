@@ -321,9 +321,8 @@ def main():
                 reg.print_fullinfo(*image.split(sep, 1))
         else:
             if opts.delete:
-                reg.delete_images(pattern_repo, pattern_tag)
-            else:
-                reg.print_all(pattern_repo, pattern_tag)
+                sys.exit(f"To delete all images use {registry}:*:*")
+            reg.print_all(pattern_repo, pattern_tag)
 
 
 if __name__ == "__main__":
