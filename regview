@@ -154,16 +154,17 @@ class DockerRegistryInfo(DockerRegistry):
         docker_id = info['ID']
         if not opts.no_trunc:
             docker_id = docker_id[len("sha256:"):len("sha256:") + 12]
-        values = [f"{repo}:{tag}", docker_id]
+        values = [f"{repo}:{tag}"]
         if opts.digests:
-            values.insert(1, info['Digest'])
+            values.append(info['Digest'])
+        values.append(docker_id)
         if opts.verbose:
             created = info['created']
             values.append(created)
         if opts.all:
             values.append(info['os'])
             values.append(info['architecture'])
-        print(fmt % tuple(values))
+        print(fmt.format(*values))
 
     def get_images(self, repos, pattern_tag=None):
         """
@@ -202,16 +203,16 @@ class DockerRegistryInfo(DockerRegistry):
             return
         image_width = int(get_terminal_size().columns / 2)
         fmt = OrderedDict({
-            "REPOSITORY:TAG": f"%-{image_width}s",
-            "DIGEST": "%-72s" if opts.digests else None,
-            "IMAGE ID": "%-72s" if opts.no_trunc else "%-12s",
-            "CREATED": "%-31s" if opts.verbose else None,
-            "OS": "%-8s" if opts.all else None,
-            "ARCH": "%s" if opts.all else None})
+            "REPOSITORY:TAG": f"{{:<{image_width}}}",
+            "DIGEST": "{:<72}" if opts.digests else None,
+            "IMAGE ID": "{:<72}" if opts.no_trunc else "{:<12}",
+            "CREATED": "{:<31}" if opts.verbose else None,
+            "OS": "{:<8}" if opts.all else None,
+            "ARCH": "{}" if opts.all else None})
         fmt = {k: fmt[k] for k in fmt if fmt[k]}
         keys = fmt.keys()
         fmt = "  ".join(fmt.values())
-        print(fmt % tuple(keys))
+        print(fmt.format(*keys))
         full = opts.all or opts.verbose
         with ThreadPoolExecutor() as executor:
             for repo, tags in self.get_images(repos, tag_pattern):
