@@ -21,7 +21,6 @@ class DockerRegistry:
     """
     Class to implement Docker Registry methods
     """
-    MANIFEST_V1 = "application/vnd.docker.distribution.manifest.v1+json"
     MANIFEST_V2 = "application/vnd.docker.distribution.manifest.v2+json"
     MANIFEST_V2_FAT = "application/vnd.docker.distribution.manifest.list.v2+json"
 
@@ -152,7 +151,7 @@ class DockerRegistry:
         Get the manifest
         """
         url = f"{self.registry}/v2/{repo}/manifests/{tag}"
-        content_type = f"{self.MANIFEST_V2},{self.MANIFEST_V1}"
+        content_type = self.MANIFEST_V2
         if fat:
             content_type += f",{self.MANIFEST_V2_FAT}"
         headers = self._get_token_repo(repo)
@@ -165,6 +164,8 @@ class DockerRegistry:
             logging.error(fmt, repo, tag, err)
             return None
         manifest = got.json()
+        if manifest['schemaVersion'] != 2:
+            return None
         manifest['docker-content-digest'] = got.headers.get('docker-content-digest')
         # Some registries don't return this header and need an additional HEAD request
         if not manifest['docker-content-digest']:

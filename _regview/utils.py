@@ -35,11 +35,10 @@ def pretty_size(size):
     """
     Converts a size in bytes to a string in KB, MB, GB or TB
     """
-    if size is not None:
-        units = (' ', 'K', 'M', 'G', 'T')
-        for i in range(4, -1, -1):
-            if size > 1024**i:
-                return "%.2f%cB" % (float(size) / 1024**i, units[i])
+    units = (' ', 'K', 'M', 'G', 'T')
+    for i in range(4, -1, -1):
+        if size > 1024**i:
+            return "%.2f%cB" % (float(size) / 1024**i, units[i])
     return None
 
 
