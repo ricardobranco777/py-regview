@@ -2,7 +2,7 @@
 
 View the contents of a Docker Registry v2
 
-[![Build Status](https://travis-ci.org/ricardobranco777/regview.svg?branch=master)](https://travis-ci.org/ricardobranco777/regview)
+[![Build Status](https://travis-ci.com/ricardobranco777/regview.svg?branch=master)](https://travis-ci.org/ricardobranco777/regview)
 
 ## Usage
 
