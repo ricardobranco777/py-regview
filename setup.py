@@ -11,7 +11,7 @@ def read(path):
     """
     Read a file
     """
-    with open(path) as file_:
+    with open(path, encoding="utf-8") as file_:
         return file_.read()
 
 

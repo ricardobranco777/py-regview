@@ -38,7 +38,7 @@ def pretty_size(size):
     units = (' ', 'K', 'M', 'G', 'T')
     for i in range(4, -1, -1):
         if size > 1024**i:
-            return "%.2f%cB" % (float(size) / 1024**i, units[i])
+            return f"{float(size) / 1024**i:.2f}{units[i]}B"
     return None
 
 
@@ -58,7 +58,7 @@ def get_docker_credentials(registry):
     config_file = os.path.join(
         os.getenv("DOCKER_CONFIG", os.path.expanduser(os.path.join("~", ".docker"))), "config.json")
     try:
-        with open(config_file) as file:
+        with open(config_file, encoding="utf-8") as file:
             config = json.load(file)
     except OSError:
         return None
