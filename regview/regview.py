@@ -14,9 +14,9 @@ from functools import lru_cache
 from getpass import getpass
 from shutil import get_terminal_size
 
-from _regview.docker_registry import DockerRegistry
-from _regview.utils import pretty_date, pretty_size, is_glob
-from _regview import __version__
+from .docker_registry import DockerRegistry
+from .utils import pretty_date, pretty_size, is_glob
+from . import __version__
 
 
 # Architectures and operating systems that can be pushed to Docker Registry
@@ -24,6 +24,9 @@ GOARCH = ['386', 'amd64', 'arm', 'arm64', 'mips', 'mips64', 'mips64le',
           'mipsle', 'ppc64', 'ppc64le', 'riscv64', 's390x', 'wasm']
 GOOS = ['aix', 'android', 'darwin', 'dragonfly', 'freebsd', 'illumos', 'ios',
         'js', 'linux', 'netbsd', 'openbsd', 'plan9', 'solaris', 'windows']
+
+
+opts = None  # pylint: disable=invalid-name
 
 
 def get_os_arch():
@@ -295,6 +298,9 @@ def main():
     """
     Main function
     """
+    global opts  # pylint: disable=global-statement,invalid-name
+    opts = parse_opts()
+
     if opts.version:
         print(__version__)
         sys.exit(0)
@@ -328,11 +334,3 @@ def main():
             if opts.delete:
                 sys.exit(f"To delete all images use {registry}:*:*")
             reg.print_all(pattern_repo, pattern_tag)
-
-
-if __name__ == "__main__":
-    try:
-        opts = parse_opts()
-        main()
-    except KeyboardInterrupt:
-        sys.exit(1)

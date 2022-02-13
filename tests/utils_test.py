@@ -3,7 +3,7 @@
 import unittest
 from unittest.mock import patch, mock_open
 
-from _regview.utils import pretty_date, pretty_size, get_docker_credentials
+from regview.utils import pretty_date, pretty_size, get_docker_credentials
 
 
 class Test_utils(unittest.TestCase):

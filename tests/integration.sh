@@ -193,7 +193,7 @@ sudo docker run -d \
         registry:2
 sleep 5
 
-sed -ri 's/(_catalog|\/tags\/list)/\1?n=1/' _regview/docker_registry.py
+sed -ri 's/(_catalog|\/tags\/list)/\1?n=1/' regview/docker_registry.py
 
 for i in ${image}:test ${image}2:latest ${image}2:test ; do
 	sudo docker tag $image localhost:$port/$i

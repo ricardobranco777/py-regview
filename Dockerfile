@@ -11,10 +11,11 @@ RUN	adduser -D user -h /user
 
 COPY	. /regview
 
-ENV     PYTHONPATH /regview
+RUN	pip install --compile /regview
+
 ENV	PYTHONUNBUFFERED 1
 
 WORKDIR	/user
 
 USER	user
-ENTRYPOINT ["/regview/regview"]
+ENTRYPOINT ["/usr/local/bin/regview"]

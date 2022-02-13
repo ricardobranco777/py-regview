@@ -4,7 +4,7 @@ Setup script
 """
 
 from setuptools import find_packages, setup
-from _regview import __version__
+from regview import __version__
 
 
 def read(path):
@@ -31,7 +31,7 @@ setup(
     author="Ricardo Branco",
     author_email='rbranco@suse.de',
     url='https://github.com/ricardobranco777/regview',
-    package_dir={'regview': '.'},
+    package_dir={'regview': 'regview'},
     packages=find_packages(),
     include_package_data=True,
     python_requires='>=3.6',
@@ -39,7 +39,7 @@ setup(
     license='MIT License',
     zip_safe=False,
     keywords=['regview', 'docker registry'],
-    scripts=['regview'],
+    scripts=['scripts/regview'],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
