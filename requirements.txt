@@ -3,7 +3,6 @@ charset-normalizer==2.0.11
 docker-pycreds==0.4.0
 idna==3.3
 python-dateutil==2.8.2
-regview==2.0.1
 requests==2.27.1
 requests-toolbelt==0.9.1
 six==1.16.0
