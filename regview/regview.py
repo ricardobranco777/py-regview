@@ -95,7 +95,7 @@ class DockerRegistryInfo(DockerRegistry):
             return infos
         info = {
             'Digest': tag if tag.startswith("sha256:") else manifest['docker-content-digest'],
-            'CompressedSize': sum([_['size'] for _ in manifest['layers']]),
+            'CompressedSize': sum(_['size'] for _ in manifest['layers']),
             'ID': manifest['config']['digest']}
         if full:
             info.update(self.get_blob_cached(repo, info['ID']).json())
