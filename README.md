@@ -19,6 +19,7 @@ regview [OPTIONS] REGISTRY[/REPOSITORY[:TAG|@DIGEST]]
   -C CACERT, --cacert CACERT
                         CA certificate for server
   --debug               Enable debug
+  --digests             Show digests
   --insecure            Allow insecure server connections
   --no-trunc            Don't truncate output
   --raw                 Raw values for date and size
@@ -27,9 +28,9 @@ regview [OPTIONS] REGISTRY[/REPOSITORY[:TAG|@DIGEST]]
   -p PASSWORD, --password PASSWORD
                         Password for authentication
   -v, --verbose         Show more information
-  -V, --version         Show version and exit
   --delete              Delete images. USE WITH CAUTION!
   --dry-run             Used with --delete: only show the images that would be deleted
+  -V, --version         Show version and exit
 ```
 
 ## Notes
