@@ -172,7 +172,7 @@ class DockerRegistry:
             try:
                 got = self.session.head(url, headers=headers)
                 got.raise_for_status()
-                manifest['docker-content-digest'] = got.headers['docker-content-digest']
+                manifest['docker-content-digest'] = got.headers.get('docker-content-digest')
             except RequestException:
                 pass
         return manifest
