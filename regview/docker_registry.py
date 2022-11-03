@@ -7,6 +7,7 @@ import logging
 import sys
 
 from functools import lru_cache
+from hashlib import sha256
 from urllib.parse import urlparse
 
 import requests
@@ -172,7 +173,7 @@ class DockerRegistry:
             try:
                 got = self.session.head(url, headers=headers)
                 got.raise_for_status()
-                manifest['docker-content-digest'] = got.headers.get('docker-content-digest')
+                manifest['docker-content-digest'] = got.headers.get('docker-content-digest', sha256(got.content).hexdigest())
             except RequestException:
                 pass
         return manifest
