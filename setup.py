@@ -30,7 +30,7 @@ setup(
     long_description_content_type="text/markdown",
     author="Ricardo Branco",
     author_email='rbranco@suse.de',
-    url='https://github.com/ricardobranco777/regview',
+    url='https://github.com/ricardobranco777/py-regview',
     package_dir={'regview': 'regview'},
     packages=find_packages(),
     include_package_data=True,
