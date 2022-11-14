@@ -2,6 +2,8 @@
 
 View the contents of a Docker Registry v2
 
+Golang version: https://github.com/ricardobranco777/regview
+
 ## Usage
 
 ```
