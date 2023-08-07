@@ -1,7 +1,7 @@
-FILES=*.py regview/*.py tests/*.py
+FILES=regview/*.py tests/*.py
 
 .PHONY: all
-all: flake8 pylint test:
+all: flake8 pylint test
 
 .PHONY: flake8
 flake8:
