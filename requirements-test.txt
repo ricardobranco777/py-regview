@@ -1,3 +1,5 @@
+-r requirements.txt
+
 flake8
 pylint
-https://github.com/ricardobranco777/simplepki/archive/master.zip
+https://github.com/ricardobranco777/py-simplepki/archive/master.zip
