@@ -1,3 +1,5 @@
+![Build Status](https://github.com/ricardobranco777/py-regview/actions/workflows/ci.yml/badge.svg)
+
 # regview
 
 View the contents of a Docker Registry v2
